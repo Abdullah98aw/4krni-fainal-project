@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { LayoutComponent } from '../../components/layout/layout.component';
 import { UsersService } from '../../services/users.service';
+import { OrganizationService, Agency, Department, Section } from '../../services/organization.service';
 import { User } from '../../models/user.model';
 
 @Component({
@@ -20,10 +21,20 @@ export class UsersComponent implements OnInit {
   editingUser: Partial<User> = {};
   isEditing = false;
 
-  constructor(private usersService: UsersService, private cdr: ChangeDetectorRef) {}
+  // Organization lookup lists
+  agencies: Agency[] = [];
+  departments: Department[] = [];
+  sections: Section[] = [];
+
+  constructor(
+    private usersService: UsersService,
+    private orgService: OrganizationService,
+    private cdr: ChangeDetectorRef
+  ) {}
 
   ngOnInit() {
     this.loadUsers();
+    this.loadAgencies();
   }
 
   loadUsers() {
@@ -40,8 +51,55 @@ export class UsersComponent implements OnInit {
     });
   }
 
+  loadAgencies() {
+    this.orgService.getAgencies().subscribe({
+      next: (agencies) => {
+        this.agencies = agencies;
+        this.cdr.detectChanges();
+      },
+      error: () => {}
+    });
+  }
+
+  onAgencyChange(agencyId: number | undefined) {
+    this.editingUser.departmentId = undefined;
+    this.editingUser.departmentName = undefined;
+    this.editingUser.sectionId = undefined;
+    this.editingUser.sectionName = undefined;
+    this.departments = [];
+    this.sections = [];
+
+    if (agencyId && agencyId > 0) {
+      this.orgService.getDepartmentsByAgency(agencyId).subscribe({
+        next: (depts) => {
+          this.departments = depts;
+          this.cdr.detectChanges();
+        },
+        error: () => {}
+      });
+    }
+  }
+
+  onDepartmentChange(departmentId: number | undefined) {
+    this.editingUser.sectionId = undefined;
+    this.editingUser.sectionName = undefined;
+    this.sections = [];
+
+    if (departmentId && departmentId > 0) {
+      this.orgService.getSectionsByDepartment(departmentId).subscribe({
+        next: (sects) => {
+          this.sections = sects;
+          this.cdr.detectChanges();
+        },
+        error: () => {}
+      });
+    }
+  }
+
   openCreate() {
     this.editingUser = { role: 'USER' };
+    this.departments = [];
+    this.sections = [];
     this.isEditing = false;
     this.showModal = true;
     this.cdr.detectChanges();
@@ -49,8 +107,31 @@ export class UsersComponent implements OnInit {
 
   openEdit(user: User) {
     this.editingUser = { ...user };
+    this.departments = [];
+    this.sections = [];
     this.isEditing = true;
     this.showModal = true;
+
+    // Pre-load departments and sections for the existing user's org assignment
+    if (user.agencyId) {
+      this.orgService.getDepartmentsByAgency(user.agencyId).subscribe({
+        next: (depts) => {
+          this.departments = depts;
+          if (user.departmentId) {
+            this.orgService.getSectionsByDepartment(user.departmentId).subscribe({
+              next: (sects) => {
+                this.sections = sects;
+                this.cdr.detectChanges();
+              },
+              error: () => {}
+            });
+          }
+          this.cdr.detectChanges();
+        },
+        error: () => {}
+      });
+    }
+
     this.cdr.detectChanges();
   }
 

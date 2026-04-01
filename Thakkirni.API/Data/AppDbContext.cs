@@ -7,7 +7,7 @@ namespace Thakkirni.API.Data
     {
         public AppDbContext(DbContextOptions<AppDbContext> options) : base(options) { }
 
-        public DbSet<Company> Companies { get; set; }
+        public DbSet<Agency> Agencies { get; set; }
         public DbSet<Department> Departments { get; set; }
         public DbSet<Section> Sections { get; set; }
         public DbSet<User> Users { get; set; }
@@ -23,7 +23,42 @@ namespace Thakkirni.API.Data
         {
             base.OnModelCreating(modelBuilder);
 
-            // Configure relationships
+            // Agency → Department
+            modelBuilder.Entity<Department>()
+                .HasOne(d => d.Agency)
+                .WithMany(a => a.Departments)
+                .HasForeignKey(d => d.AgencyId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // Department → Section
+            modelBuilder.Entity<Section>()
+                .HasOne(s => s.Department)
+                .WithMany(d => d.Sections)
+                .HasForeignKey(s => s.DepartmentId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // User → Agency (optional)
+            modelBuilder.Entity<User>()
+                .HasOne(u => u.Agency)
+                .WithMany()
+                .HasForeignKey(u => u.AgencyId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // User → Department (optional)
+            modelBuilder.Entity<User>()
+                .HasOne(u => u.Department)
+                .WithMany(d => d.Users)
+                .HasForeignKey(u => u.DepartmentId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // User → Section (optional)
+            modelBuilder.Entity<User>()
+                .HasOne(u => u.Section)
+                .WithMany(s => s.Users)
+                .HasForeignKey(u => u.SectionId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // Item relationships
             modelBuilder.Entity<ItemMember>()
                 .HasOne(im => im.Item)
                 .WithMany(i => i.Members)

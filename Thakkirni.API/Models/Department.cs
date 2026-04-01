@@ -13,9 +13,9 @@ namespace Thakkirni.API.Models
         public string Name { get; set; }
 
         [Required]
-        public int CompanyId { get; set; }
-        [ForeignKey("CompanyId")]
-        public Company Company { get; set; }
+        public int AgencyId { get; set; }
+        [ForeignKey("AgencyId")]
+        public Agency Agency { get; set; }
 
         public ICollection<Section> Sections { get; set; }
         public ICollection<User> Users { get; set; }

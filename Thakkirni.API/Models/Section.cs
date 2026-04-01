@@ -16,5 +16,7 @@ namespace Thakkirni.API.Models
         public int DepartmentId { get; set; }
         [ForeignKey("DepartmentId")]
         public Department Department { get; set; }
+
+        public ICollection<User> Users { get; set; }
     }
 }

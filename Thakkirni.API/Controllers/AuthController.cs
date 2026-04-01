@@ -1,11 +1,11 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
 using Thakkirni.API.Data;
 using Thakkirni.API.DTOs;
-using Microsoft.EntityFrameworkCore;
 
 namespace Thakkirni.API.Controllers
 {
@@ -25,8 +25,11 @@ namespace Thakkirni.API.Controllers
         [HttpPost("login")]
         public async Task<IActionResult> Login([FromBody] LoginDto loginDto)
         {
-            // In a real app, you would hash passwords. Here we just match email for simplicity based on the mock data.
-            var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == loginDto.Email);
+            var user = await _context.Users
+                .Include(u => u.Agency)
+                .Include(u => u.Department)
+                .Include(u => u.Section)
+                .FirstOrDefaultAsync(u => u.Email == loginDto.Email);
 
             if (user == null)
             {
@@ -45,13 +48,17 @@ namespace Thakkirni.API.Controllers
                     new Claim("DepartmentId", user.DepartmentId?.ToString() ?? "")
                 }),
                 Expires = DateTime.UtcNow.AddDays(7),
-                SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256Signature),
+                SigningCredentials = new SigningCredentials(
+                    new SymmetricSecurityKey(key),
+                    SecurityAlgorithms.HmacSha256Signature),
                 Issuer = _configuration["Jwt:Issuer"],
                 Audience = _configuration["Jwt:Audience"]
             };
 
             var token = tokenHandler.CreateToken(tokenDescriptor);
 
+            // Return full user details (including org hierarchy) in the response body.
+            // The JWT token itself only carries the minimal claims needed for authorization.
             return Ok(new AuthResponseDto
             {
                 Token = tokenHandler.WriteToken(token),
@@ -60,9 +67,16 @@ namespace Thakkirni.API.Controllers
                     Id = user.Id,
                     Name = user.Name,
                     Email = user.Email,
+                    NationalId = user.NationalId,
                     Role = user.Role,
                     Avatar = user.Avatar,
-                    DepartmentId = user.DepartmentId
+                    JobTitle = user.JobTitle,
+                    AgencyId = user.AgencyId,
+                    AgencyName = user.Agency?.Name,
+                    DepartmentId = user.DepartmentId,
+                    DepartmentName = user.Department?.Name,
+                    SectionId = user.SectionId,
+                    SectionName = user.Section?.Name
                 }
             });
         }

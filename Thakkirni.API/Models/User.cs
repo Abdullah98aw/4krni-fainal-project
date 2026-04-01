@@ -24,9 +24,20 @@ namespace Thakkirni.API.Models
 
         public string Avatar { get; set; }
 
+        [MaxLength(100)]
+        public string JobTitle { get; set; }
+
+        public int? AgencyId { get; set; }
+        [ForeignKey("AgencyId")]
+        public Agency Agency { get; set; }
+
         public int? DepartmentId { get; set; }
         [ForeignKey("DepartmentId")]
         public Department Department { get; set; }
+
+        public int? SectionId { get; set; }
+        [ForeignKey("SectionId")]
+        public Section Section { get; set; }
 
         public ICollection<ItemMember> ItemMembers { get; set; }
         public ICollection<ItemAssignee> ItemAssignees { get; set; }

@@ -5,7 +5,13 @@ export interface User {
   nationalId?: string;
   role: 'ADMIN' | 'USER';
   avatar?: string;
+  jobTitle?: string;
+  agencyId?: number;
+  agencyName?: string;
   departmentId?: number;
+  departmentName?: string;
+  sectionId?: number;
+  sectionName?: string;
 }
 
 export interface LoginRequest {

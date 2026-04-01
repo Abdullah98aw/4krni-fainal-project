@@ -18,15 +18,24 @@
         <div class="user-info">
           <h3 class="user-name">{{ user.name }}</h3>
           <p class="user-email">{{ user.email }}</p>
+          <p class="user-job-title" *ngIf="user.jobTitle">{{ user.jobTitle }}</p>
         </div>
         <span class="role-badge" [class]="user.role.toLowerCase()">
           {{ user.role === 'ADMIN' ? 'مدير' : 'موظف' }}
         </span>
       </div>
       <div class="user-card-body">
-        <div class="user-detail">
+        <div class="user-detail" *ngIf="user.nationalId">
           <span class="material-icons">badge</span>
           {{ user.nationalId }}
+        </div>
+        <div class="user-detail" *ngIf="user.agencyName || user.departmentName || user.sectionName">
+          <span class="material-icons">business</span>
+          <span>
+            <span *ngIf="user.agencyName">{{ user.agencyName }}</span>
+            <span *ngIf="user.departmentName"> / {{ user.departmentName }}</span>
+            <span *ngIf="user.sectionName"> / {{ user.sectionName }}</span>
+          </span>
         </div>
       </div>
       <div class="user-card-actions">
@@ -62,10 +71,35 @@
         <input type="text" [(ngModel)]="editingUser.nationalId" class="form-input" placeholder="أدخل رقم الهوية" dir="ltr" />
       </div>
       <div class="form-group">
+        <label>المسمى الوظيفي</label>
+        <input type="text" [(ngModel)]="editingUser.jobTitle" class="form-input" placeholder="أدخل المسمى الوظيفي" />
+      </div>
+      <div class="form-group">
         <label>الدور</label>
         <select [(ngModel)]="editingUser.role" class="form-input">
           <option value="USER">موظف</option>
           <option value="ADMIN">مدير</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>الجهة</label>
+        <select [(ngModel)]="editingUser.agencyId" (ngModelChange)="onAgencyChange($event)" class="form-input">
+          <option [ngValue]="undefined">-- اختر الجهة --</option>
+          <option *ngFor="let agency of agencies" [ngValue]="agency.id">{{ agency.name }}</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>الإدارة</label>
+        <select [(ngModel)]="editingUser.departmentId" (ngModelChange)="onDepartmentChange($event)" class="form-input" [disabled]="!editingUser.agencyId || departments.length === 0">
+          <option [ngValue]="undefined">-- اختر الإدارة --</option>
+          <option *ngFor="let dept of departments" [ngValue]="dept.id">{{ dept.name }}</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>القسم</label>
+        <select [(ngModel)]="editingUser.sectionId" class="form-input" [disabled]="!editingUser.departmentId || sections.length === 0">
+          <option [ngValue]="undefined">-- اختر القسم --</option>
+          <option *ngFor="let section of sections" [ngValue]="section.id">{{ section.name }}</option>
         </select>
       </div>
     </div>
