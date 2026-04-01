@@ -1,0 +1,128 @@
+<app-layout [title]="item?.title || 'تفاصيل العنصر'">
+  <ng-container slot="actions">
+    <button *ngIf="canComplete" class="btn-success" (click)="completeItem()" [disabled]="completing">
+      <span class="material-icons">check</span>
+      {{ completing ? 'جاري...' : 'إتمام' }}
+    </button>
+    <button *ngIf="isAdmin" class="btn-danger" (click)="deleteItem()" [disabled]="deleting">
+      <span class="material-icons">delete</span>
+    </button>
+  </ng-container>
+
+  <div *ngIf="loading" class="loading-state">
+    <div class="spinner"></div>
+    <p>جاري التحميل...</p>
+  </div>
+
+  <div *ngIf="!loading && item" class="detail-layout">
+    <!-- Left: Details -->
+    <div class="detail-main">
+      <!-- Tabs -->
+      <div class="tabs">
+        <button class="tab-btn" [class.active]="activeTab === 'details'" (click)="activeTab = 'details'">
+          <span class="material-icons">info</span>
+          التفاصيل
+        </button>
+        <button class="tab-btn" [class.active]="activeTab === 'chat'" (click)="activeTab = 'chat'">
+          <span class="material-icons">chat</span>
+          المحادثة
+          <span *ngIf="messages.length > 0" class="tab-count">{{ messages.length }}</span>
+        </button>
+      </div>
+
+      <!-- Details Tab -->
+      <div *ngIf="activeTab === 'details'" class="tab-content">
+        <div class="info-card">
+          <div class="info-header">
+            <div class="badges">
+              <span class="badge type" [class]="item.type.toLowerCase()">
+                {{ item.type === 'TASK' ? 'مهمة' : 'منظمة' }}
+              </span>
+              <span *ngIf="item.importance === 'SECRET'" class="badge secret">سري</span>
+              <span *ngIf="item.committeeType" class="badge committee-type">
+                {{ item.committeeType === 'INTERNAL' ? 'داخلية' : 'خارجية' }}
+              </span>
+            </div>
+            <span class="status-badge" [class]="item.status.toLowerCase()">
+              {{ item.status === 'TODO' ? 'قيد التنفيذ' : item.status === 'OVERDUE' ? 'متأخرة' : 'مكتملة' }}
+            </span>
+          </div>
+
+          <div class="info-row">
+            <span class="info-label">رقم العنصر</span>
+            <span class="info-value">#{{ item.itemNumber }}</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">الوصف</span>
+            <span class="info-value">{{ item.description || 'لا يوجد وصف' }}</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">تاريخ الاستحقاق</span>
+            <span class="info-value">{{ item.dueDate | date:'dd/MM/yyyy' }}</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">تاريخ الإنشاء</span>
+            <span class="info-value">{{ item.createdAt | date:'dd/MM/yyyy HH:mm' }}</span>
+          </div>
+        </div>
+
+        <!-- Members -->
+        <div *ngIf="item.memberIds && item.memberIds.length > 0" class="people-section">
+          <h3 class="people-title">الأعضاء</h3>
+          <div class="people-list">
+            <div *ngFor="let memberId of item.memberIds" class="person-chip">
+              <div class="person-avatar">{{ getUserInitial(memberId) }}</div>
+              <span>{{ getUserName(memberId) }}</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Assignees -->
+        <div *ngIf="item.assigneeIds && item.assigneeIds.length > 0" class="people-section">
+          <h3 class="people-title">المكلفون</h3>
+          <div class="people-list">
+            <div *ngFor="let assigneeId of item.assigneeIds" class="person-chip">
+              <div class="person-avatar assignee">{{ getUserInitial(assigneeId) }}</div>
+              <span>{{ getUserName(assigneeId) }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Chat Tab -->
+      <div *ngIf="activeTab === 'chat'" class="tab-content chat-tab">
+        <div class="messages-list">
+          <div *ngIf="messages.length === 0" class="no-messages">
+            <span class="material-icons">chat_bubble_outline</span>
+            <p>لا توجد رسائل بعد</p>
+          </div>
+          <div *ngFor="let msg of messages"
+               class="message"
+               [class.own]="isCurrentUser(msg.userId)">
+            <div class="message-avatar">{{ getUserInitial(msg.userId) }}</div>
+            <div class="message-content">
+              <div class="message-header">
+                <span class="message-sender">{{ getUserName(msg.userId) }}</span>
+                <span class="message-time">{{ msg.createdAt | date:'HH:mm' }}</span>
+              </div>
+              <div class="message-text">{{ msg.text }}</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="message-input-area">
+          <input
+            type="text"
+            [(ngModel)]="messageText"
+            placeholder="اكتب رسالة..."
+            class="message-input"
+            (keyup.enter)="sendMessage()"
+          />
+          <button class="send-btn" (click)="sendMessage()" [disabled]="sending || !messageText.trim()">
+            <span class="material-icons">send</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</app-layout>
