@@ -58,54 +58,161 @@
       <button (click)="showModal = false">✕</button>
     </div>
     <div class="modal-body">
-      <div class="form-group">
-        <label>الاسم الكامل</label>
-        <input type="text" [(ngModel)]="editingUser.name" class="form-input" placeholder="أدخل الاسم" />
+
+      <!-- API Error Banner -->
+      <div *ngIf="apiError" class="error-banner">
+        <span class="material-icons">error_outline</span>
+        <span>{{ apiError }}</span>
       </div>
+
+      <!-- Name -->
+      <div class="form-group">
+        <label>الاسم الكامل <span class="required-star">*</span></label>
+        <input
+          type="text"
+          [(ngModel)]="editingUser.name"
+          name="name"
+          #nameField="ngModel"
+          required
+          maxlength="100"
+          class="form-input"
+          [class.input-error]="nameField.invalid && nameField.touched"
+          placeholder="أدخل الاسم"
+        />
+        <span class="field-error" *ngIf="nameField.invalid && nameField.touched">
+          الاسم الكامل مطلوب
+        </span>
+      </div>
+
+      <!-- Email -->
       <div class="form-group">
         <label>البريد الإلكتروني</label>
-        <input type="email" [(ngModel)]="editingUser.email" class="form-input" placeholder="أدخل البريد الإلكتروني" dir="ltr" />
+        <input
+          type="email"
+          [(ngModel)]="editingUser.email"
+          name="email"
+          #emailField="ngModel"
+          maxlength="100"
+          class="form-input"
+          [class.input-error]="emailField.invalid && emailField.touched"
+          placeholder="أدخل البريد الإلكتروني"
+          dir="ltr"
+        />
+        <span class="field-error" *ngIf="emailField.errors?.['email'] && emailField.touched">
+          صيغة البريد الإلكتروني غير صحيحة
+        </span>
       </div>
+
+      <!-- National ID -->
       <div class="form-group">
-        <label>رقم الهوية</label>
-        <input type="text" [(ngModel)]="editingUser.nationalId" class="form-input" placeholder="أدخل رقم الهوية" dir="ltr" />
+        <label>رقم الهوية <span class="required-star">*</span></label>
+        <input
+          type="text"
+          [(ngModel)]="editingUser.nationalId"
+          name="nationalId"
+          #nationalIdField="ngModel"
+          required
+          maxlength="20"
+          class="form-input"
+          [class.input-error]="nationalIdField.invalid && nationalIdField.touched"
+          placeholder="أدخل رقم الهوية"
+          dir="ltr"
+        />
+        <span class="field-error" *ngIf="nationalIdField.invalid && nationalIdField.touched">
+          رقم الهوية مطلوب
+        </span>
       </div>
+
+      <!-- Job Title -->
       <div class="form-group">
         <label>المسمى الوظيفي</label>
-        <input type="text" [(ngModel)]="editingUser.jobTitle" class="form-input" placeholder="أدخل المسمى الوظيفي" />
+        <input
+          type="text"
+          [(ngModel)]="editingUser.jobTitle"
+          name="jobTitle"
+          maxlength="100"
+          class="form-input"
+          placeholder="أدخل المسمى الوظيفي"
+        />
       </div>
+
+      <!-- Role -->
       <div class="form-group">
-        <label>الدور</label>
-        <select [(ngModel)]="editingUser.role" class="form-input">
+        <label>الدور <span class="required-star">*</span></label>
+        <select
+          [(ngModel)]="editingUser.role"
+          name="role"
+          #roleField="ngModel"
+          required
+          class="form-input"
+          [class.input-error]="roleField.invalid && roleField.touched"
+        >
+          <option value="">-- اختر الدور --</option>
           <option value="USER">موظف</option>
           <option value="ADMIN">مدير</option>
         </select>
+        <span class="field-error" *ngIf="roleField.invalid && roleField.touched">
+          الدور مطلوب
+        </span>
       </div>
+
+      <!-- Agency -->
       <div class="form-group">
         <label>الجهة</label>
-        <select [(ngModel)]="editingUser.agencyId" (ngModelChange)="onAgencyChange($event)" class="form-input">
+        <select
+          [(ngModel)]="editingUser.agencyId"
+          name="agencyId"
+          (ngModelChange)="onAgencyChange($event)"
+          class="form-input"
+        >
           <option [ngValue]="undefined">-- اختر الجهة --</option>
           <option *ngFor="let agency of agencies" [ngValue]="agency.id">{{ agency.name }}</option>
         </select>
       </div>
+
+      <!-- Department (disabled until Agency selected) -->
       <div class="form-group">
         <label>الإدارة</label>
-        <select [(ngModel)]="editingUser.departmentId" (ngModelChange)="onDepartmentChange($event)" class="form-input" [disabled]="!editingUser.agencyId || departments.length === 0">
+        <select
+          [(ngModel)]="editingUser.departmentId"
+          name="departmentId"
+          (ngModelChange)="onDepartmentChange($event)"
+          class="form-input"
+          [disabled]="!editingUser.agencyId || departments.length === 0"
+        >
           <option [ngValue]="undefined">-- اختر الإدارة --</option>
           <option *ngFor="let dept of departments" [ngValue]="dept.id">{{ dept.name }}</option>
         </select>
+        <span class="field-hint" *ngIf="!editingUser.agencyId">
+          اختر الجهة أولاً لتفعيل هذا الحقل
+        </span>
       </div>
+
+      <!-- Section (disabled until Department selected) -->
       <div class="form-group">
         <label>القسم</label>
-        <select [(ngModel)]="editingUser.sectionId" class="form-input" [disabled]="!editingUser.departmentId || sections.length === 0">
+        <select
+          [(ngModel)]="editingUser.sectionId"
+          name="sectionId"
+          class="form-input"
+          [disabled]="!editingUser.departmentId || sections.length === 0"
+        >
           <option [ngValue]="undefined">-- اختر القسم --</option>
           <option *ngFor="let section of sections" [ngValue]="section.id">{{ section.name }}</option>
         </select>
+        <span class="field-hint" *ngIf="!editingUser.departmentId">
+          اختر الإدارة أولاً لتفعيل هذا الحقل
+        </span>
       </div>
+
     </div>
     <div class="modal-footer">
       <button class="btn-secondary" (click)="showModal = false">إلغاء</button>
-      <button class="btn-primary" (click)="save()" [disabled]="saving">
+      <button
+        class="btn-primary"
+        (click)="save()"
+        [disabled]="saving || !isFormValid()"
+      >
         {{ saving ? 'جاري الحفظ...' : 'حفظ' }}
       </button>
     </div>

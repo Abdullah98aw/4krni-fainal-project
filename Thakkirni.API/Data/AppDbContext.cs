@@ -37,6 +37,11 @@ namespace Thakkirni.API.Data
                 .HasForeignKey(s => s.DepartmentId)
                 .OnDelete(DeleteBehavior.Cascade);
 
+            // Unique constraint on NationalId
+            modelBuilder.Entity<User>()
+                .HasIndex(u => u.NationalId)
+                .IsUnique();
+
             // User → Agency (optional)
             modelBuilder.Entity<User>()
                 .HasOne(u => u.Agency)
