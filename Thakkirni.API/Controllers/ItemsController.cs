@@ -173,6 +173,8 @@ namespace Thakkirni.API.Controllers
         [HttpPut("{id}")]
         public async Task<IActionResult> UpdateItem(int id, [FromBody] CreateItemDto updateDto)
         {
+            var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value!);
+
             var item = await _context.Items
                 .Include(i => i.Members)
                 .Include(i => i.Assignees)
@@ -180,6 +182,7 @@ namespace Thakkirni.API.Controllers
 
             if (item == null) return NotFound();
 
+            // Update scalar fields
             item.Title = updateDto.Title ?? item.Title;
             item.Description = updateDto.Description ?? item.Description;
             item.Importance = updateDto.Importance ?? item.Importance;
@@ -187,8 +190,57 @@ namespace Thakkirni.API.Controllers
             item.DueDate = updateDto.DueDate != default ? updateDto.DueDate : item.DueDate;
             item.UpdatedAt = DateTime.UtcNow;
 
+            // Re-sync Members if provided
+            if (updateDto.MemberIds != null)
+            {
+                _context.ItemMembers.RemoveRange(item.Members);
+                item.Members = updateDto.MemberIds
+                    .Select(uid => new ItemMember { ItemId = id, UserId = uid })
+                    .ToList();
+                // Ensure the creator is always a member
+                if (!item.Members.Any(m => m.UserId == item.CreatedById))
+                    item.Members.Add(new ItemMember { ItemId = id, UserId = item.CreatedById });
+            }
+
+            // Re-sync Assignees if provided
+            if (updateDto.AssigneeIds != null)
+            {
+                _context.ItemAssignees.RemoveRange(item.Assignees);
+                item.Assignees = updateDto.AssigneeIds
+                    .Select(uid => new ItemAssignee { ItemId = id, UserId = uid })
+                    .ToList();
+            }
+
+            // Write audit event
+            _context.AuditEvents.Add(new AuditEvent
+            {
+                ItemId = id,
+                Type = "UPDATE",
+                UserId = userId,
+                MetaData = $"Updated: {item.Title}",
+                CreatedAt = DateTime.UtcNow
+            });
+
             await _context.SaveChangesAsync();
-            return Ok(item);
+
+            return Ok(new ItemDto
+            {
+                Id = item.Id,
+                ItemNumber = item.ItemNumber,
+                Type = item.Type,
+                Title = item.Title,
+                Description = item.Description,
+                Importance = item.Importance,
+                CommitteeType = item.CommitteeType,
+                Status = item.Status,
+                DueDate = item.DueDate,
+                CreatedById = item.CreatedById,
+                DepartmentId = item.DepartmentId,
+                CreatedAt = item.CreatedAt,
+                UpdatedAt = item.UpdatedAt,
+                MemberIds = item.Members.Select(m => m.UserId).ToList(),
+                AssigneeIds = item.Assignees.Select(a => a.UserId).ToList()
+            });
         }
 
         [HttpPatch("{id}/complete")]
@@ -349,6 +401,78 @@ namespace Thakkirni.API.Controllers
 
             await _context.SaveChangesAsync();
             return NoContent();
+        }
+
+        // ── Member Management ──────────────────────────────────────────────────
+
+        /// <summary>Add a member to a task by UserId.</summary>
+        [HttpPost("{id}/members")]
+        public async Task<IActionResult> AddMember(int id, [FromBody] MemberActionDto dto)
+        {
+            var callerId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value!);
+
+            var item = await _context.Items
+                .Include(i => i.Members)
+                .FirstOrDefaultAsync(i => i.Id == id);
+
+            if (item == null) return NotFound(new { message = "المهمة غير موجودة" });
+
+            // Verify the target user exists
+            var targetUser = await _context.Users.FindAsync(dto.UserId);
+            if (targetUser == null) return NotFound(new { message = "المستخدم غير موجود" });
+
+            // Prevent duplicate membership
+            if (item.Members.Any(m => m.UserId == dto.UserId))
+                return Conflict(new { message = "المستخدم عضو بالفعل" });
+
+            _context.ItemMembers.Add(new ItemMember { ItemId = id, UserId = dto.UserId });
+
+            _context.AuditEvents.Add(new AuditEvent
+            {
+                ItemId = id,
+                Type = "ADD_MEMBER",
+                UserId = callerId,
+                MetaData = $"Added member: {targetUser.Name}",
+                CreatedAt = DateTime.UtcNow
+            });
+
+            await _context.SaveChangesAsync();
+            return Ok(new { message = "تم إضافة العضو بنجاح" });
+        }
+
+        /// <summary>Remove a member from a task by UserId.</summary>
+        [HttpDelete("{id}/members/{userId}")]
+        public async Task<IActionResult> RemoveMember(int id, int userId)
+        {
+            var callerId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value!);
+
+            var item = await _context.Items
+                .Include(i => i.Members)
+                .FirstOrDefaultAsync(i => i.Id == id);
+
+            if (item == null) return NotFound(new { message = "المهمة غير موجودة" });
+
+            // Prevent removing the creator
+            if (item.CreatedById == userId)
+                return BadRequest(new { message = "لا يمكن إزالة منشئ المهمة" });
+
+            var membership = item.Members.FirstOrDefault(m => m.UserId == userId);
+            if (membership == null) return NotFound(new { message = "المستخدم ليس عضواً" });
+
+            _context.ItemMembers.Remove(membership);
+
+            var removedUser = await _context.Users.FindAsync(userId);
+            _context.AuditEvents.Add(new AuditEvent
+            {
+                ItemId = id,
+                Type = "REMOVE_MEMBER",
+                UserId = callerId,
+                MetaData = $"Removed member: {removedUser?.Name ?? userId.ToString()}",
+                CreatedAt = DateTime.UtcNow
+            });
+
+            await _context.SaveChangesAsync();
+            return Ok(new { message = "تم إزالة العضو بنجاح" });
         }
     }
 }

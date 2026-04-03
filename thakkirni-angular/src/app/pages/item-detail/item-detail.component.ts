@@ -27,6 +27,24 @@ export class ItemDetailComponent implements OnInit {
   deleting = false;
   activeTab: 'details' | 'chat' = 'details';
 
+  // ── Edit modal state ──────────────────────────────────
+  showEditModal = false;
+  saving = false;
+  editForm: {
+    title: string;
+    description: string;
+    importance: string;
+    committeeType: string;
+    dueDate: string;
+    memberIds: number[];
+    assigneeIds: number[];
+  } = this.emptyEditForm();
+
+  // ── Member management state ───────────────────────────
+  selectedAddUserId: number | null = null;
+  memberActionBusy = false;
+  memberActionError: string | null = null;
+
   constructor(
     private itemsService: ItemsService,
     private usersService: UsersService,
@@ -78,6 +96,134 @@ export class ItemDetailComponent implements OnInit {
       error: () => {}
     });
   }
+
+  // ── Edit modal ────────────────────────────────────────
+
+  openEdit() {
+    if (!this.item) return;
+    this.editForm = {
+      title: this.item.title,
+      description: this.item.description ?? '',
+      importance: this.item.importance,
+      committeeType: this.item.committeeType ?? '',
+      dueDate: this.item.dueDate
+        ? new Date(this.item.dueDate).toISOString().split('T')[0]
+        : '',
+      memberIds: [...(this.item.memberIds ?? [])],
+      assigneeIds: [...(this.item.assigneeIds ?? [])]
+    };
+    this.showEditModal = true;
+    this.cdr.detectChanges();
+  }
+
+  toggleEditMember(userId: number) {
+    const idx = this.editForm.memberIds.indexOf(userId);
+    if (idx >= 0) this.editForm.memberIds.splice(idx, 1);
+    else this.editForm.memberIds.push(userId);
+  }
+
+  toggleEditAssignee(userId: number) {
+    const idx = this.editForm.assigneeIds.indexOf(userId);
+    if (idx >= 0) this.editForm.assigneeIds.splice(idx, 1);
+    else this.editForm.assigneeIds.push(userId);
+  }
+
+  saveEdit() {
+    if (!this.item || !this.editForm.title.trim()) return;
+    this.saving = true;
+
+    const payload = {
+      type: this.item.type,
+      title: this.editForm.title,
+      description: this.editForm.description,
+      importance: this.editForm.importance,
+      committeeType: this.editForm.committeeType || null,
+      dueDate: this.editForm.dueDate,
+      memberIds: this.editForm.memberIds,
+      assigneeIds: this.editForm.assigneeIds
+    };
+
+    this.itemsService.updateItem(this.item.id, payload as any).subscribe({
+      next: (updated) => {
+        this.item = updated;
+        this.showEditModal = false;
+        this.saving = false;
+        this.cdr.detectChanges();
+      },
+      error: () => { this.saving = false; }
+    });
+  }
+
+  private emptyEditForm() {
+    return {
+      title: '',
+      description: '',
+      importance: 'NORMAL',
+      committeeType: '',
+      dueDate: '',
+      memberIds: [] as number[],
+      assigneeIds: [] as number[]
+    };
+  }
+
+  // ── Member management ─────────────────────────────────
+
+  /** Users that are not yet members of this item */
+  get nonMembers(): User[] {
+    if (!this.item) return [];
+    return this.users.filter(u => !this.item!.memberIds?.includes(u.id));
+  }
+
+  addMember() {
+    if (!this.item || !this.selectedAddUserId) return;
+    this.memberActionBusy = true;
+    this.memberActionError = null;
+
+    this.itemsService.addMember(this.item.id, this.selectedAddUserId).subscribe({
+      next: () => {
+        if (this.item && this.selectedAddUserId) {
+          this.item = {
+            ...this.item,
+            memberIds: [...(this.item.memberIds ?? []), this.selectedAddUserId]
+          };
+        }
+        this.selectedAddUserId = null;
+        this.memberActionBusy = false;
+        this.cdr.detectChanges();
+      },
+      error: (err) => {
+        this.memberActionError = err?.error?.message ?? 'حدث خطأ';
+        this.memberActionBusy = false;
+        this.cdr.detectChanges();
+      }
+    });
+  }
+
+  removeMember(userId: number) {
+    if (!this.item) return;
+    this.memberActionBusy = true;
+    this.memberActionError = null;
+
+    this.itemsService.removeMember(this.item.id, userId).subscribe({
+      next: () => {
+        if (this.item) {
+          this.item = {
+            ...this.item,
+            memberIds: (this.item.memberIds ?? []).filter(id => id !== userId)
+          };
+        }
+        this.memberActionBusy = false;
+        this.cdr.detectChanges();
+      },
+      error: (err) => {
+        this.memberActionError = err?.error?.message ?? 'حدث خطأ';
+        this.memberActionBusy = false;
+        this.cdr.detectChanges();
+      }
+    });
+  }
+
+  // ── Existing actions ──────────────────────────────────
 
   sendMessage() {
     if (!this.messageText.trim() || !this.item) return;

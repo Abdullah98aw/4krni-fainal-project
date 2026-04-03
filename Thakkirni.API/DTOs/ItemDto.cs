@@ -36,7 +36,12 @@ namespace Thakkirni.API.DTOs
         public string Importance { get; set; }
         public string? CommitteeType { get; set; }
         public DateTime DueDate { get; set; }
-        public List<int> MemberIds { get; set; }
-        public List<int> AssigneeIds { get; set; }
+        public List<int>? MemberIds { get; set; }
+        public List<int>? AssigneeIds { get; set; }
+    }
+
+    public class MemberActionDto
+    {
+        public int UserId { get; set; }
     }
 }

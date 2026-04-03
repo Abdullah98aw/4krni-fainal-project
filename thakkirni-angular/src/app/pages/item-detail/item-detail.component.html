@@ -1,5 +1,9 @@
 <app-layout [title]="item?.title || 'تفاصيل العنصر'">
   <ng-container slot="actions">
+    <button *ngIf="isAdmin && item?.status !== 'COMPLETED'" class="btn-secondary" (click)="openEdit()">
+      <span class="material-icons">edit</span>
+      تعديل
+    </button>
     <button *ngIf="canComplete" class="btn-success" (click)="completeItem()" [disabled]="completing">
       <span class="material-icons">check</span>
       {{ completing ? 'جاري...' : 'إتمام' }}
@@ -15,7 +19,6 @@
   </div>
 
   <div *ngIf="!loading && item" class="detail-layout">
-    <!-- Left: Details -->
     <div class="detail-main">
       <!-- Tabs -->
       <div class="tabs">
@@ -36,7 +39,7 @@
           <div class="info-header">
             <div class="badges">
               <span class="badge type" [class]="item.type.toLowerCase()">
-                {{ item.type === 'TASK' ? 'مهمة' : 'منظمة' }}
+                {{ item.type === 'TASK' ? 'مهمة' : 'لجنة' }}
               </span>
               <span *ngIf="item.importance === 'SECRET'" class="badge secret">سري</span>
               <span *ngIf="item.committeeType" class="badge committee-type">
@@ -66,14 +69,46 @@
           </div>
         </div>
 
-        <!-- Members -->
-        <div *ngIf="item.memberIds && item.memberIds.length > 0" class="people-section">
+        <!-- Members Section -->
+        <div class="people-section">
           <h3 class="people-title">الأعضاء</h3>
+
+          <!-- Error banner -->
+          <div *ngIf="memberActionError" class="error-banner">{{ memberActionError }}</div>
+
+          <!-- Current members list -->
           <div class="people-list">
             <div *ngFor="let memberId of item.memberIds" class="person-chip">
               <div class="person-avatar">{{ getUserInitial(memberId) }}</div>
               <span>{{ getUserName(memberId) }}</span>
+              <!-- Remove button (admin only, cannot remove creator) -->
+              <button
+                *ngIf="isAdmin && memberId !== item.createdById"
+                class="remove-member-btn"
+                (click)="removeMember(memberId)"
+                [disabled]="memberActionBusy"
+                title="إزالة العضو"
+              >✕</button>
             </div>
+            <div *ngIf="!item.memberIds || item.memberIds.length === 0" class="empty-people">
+              لا يوجد أعضاء
+            </div>
+          </div>
+
+          <!-- Add member row (admin only) -->
+          <div *ngIf="isAdmin && item.status !== 'COMPLETED'" class="add-member-row">
+            <select [(ngModel)]="selectedAddUserId" class="form-input add-member-select">
+              <option [ngValue]="null">-- اختر عضواً للإضافة --</option>
+              <option *ngFor="let u of nonMembers" [ngValue]="u.id">{{ u.name }}</option>
+            </select>
+            <button
+              class="btn-primary add-member-btn"
+              (click)="addMember()"
+              [disabled]="!selectedAddUserId || memberActionBusy"
+            >
+              <span class="material-icons">person_add</span>
+              إضافة
+            </button>
           </div>
         </div>
 
@@ -126,3 +161,86 @@
     </div>
   </div>
 </app-layout>
+
+<!-- ─── Edit Task Modal ─────────────────────────────────────────────── -->
+<div *ngIf="showEditModal" class="modal-overlay" (click)="showEditModal = false">
+  <div class="modal" (click)="$event.stopPropagation()" dir="rtl">
+    <div class="modal-header">
+      <h2>تعديل المهمة</h2>
+      <button (click)="showEditModal = false">✕</button>
+    </div>
+    <div class="modal-body">
+
+      <div class="form-group">
+        <label>العنوان <span class="required-star">*</span></label>
+        <input type="text" [(ngModel)]="editForm.title" class="form-input" placeholder="أدخل العنوان" maxlength="200" />
+      </div>
+
+      <div class="form-group">
+        <label>الوصف</label>
+        <textarea [(ngModel)]="editForm.description" class="form-input" rows="3" placeholder="أدخل الوصف"></textarea>
+      </div>
+
+      <div class="form-group">
+        <label>الأهمية</label>
+        <select [(ngModel)]="editForm.importance" class="form-input">
+          <option value="NORMAL">عادي</option>
+          <option value="SECRET">سري</option>
+        </select>
+      </div>
+
+      <div *ngIf="item?.type === 'COMMITTEE'" class="form-group">
+        <label>نوع اللجنة</label>
+        <select [(ngModel)]="editForm.committeeType" class="form-input">
+          <option value="">-- اختر --</option>
+          <option value="INTERNAL">داخلية</option>
+          <option value="EXTERNAL">خارجية</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label>تاريخ الاستحقاق <span class="required-star">*</span></label>
+        <input type="date" [(ngModel)]="editForm.dueDate" class="form-input" />
+      </div>
+
+      <div class="form-group">
+        <label>الأعضاء</label>
+        <div class="users-checkboxes">
+          <label *ngFor="let user of users" class="user-checkbox">
+            <input
+              type="checkbox"
+              [checked]="editForm.memberIds.includes(user.id)"
+              (change)="toggleEditMember(user.id)"
+            />
+            {{ user.name }}
+          </label>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>المكلفون</label>
+        <div class="users-checkboxes">
+          <label *ngFor="let user of users" class="user-checkbox">
+            <input
+              type="checkbox"
+              [checked]="editForm.assigneeIds.includes(user.id)"
+              (change)="toggleEditAssignee(user.id)"
+            />
+            {{ user.name }}
+          </label>
+        </div>
+      </div>
+
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secondary" (click)="showEditModal = false">إلغاء</button>
+      <button
+        class="btn-primary"
+        (click)="saveEdit()"
+        [disabled]="saving || !editForm.title.trim()"
+      >
+        {{ saving ? 'جاري الحفظ...' : 'حفظ التعديلات' }}
+      </button>
+    </div>
+  </div>
+</div>

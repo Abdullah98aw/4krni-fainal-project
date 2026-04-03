@@ -47,4 +47,12 @@ export class ItemsService {
   markMessagesRead(itemId: number): Observable<void> {
     return this.http.post<void>(`${this.apiUrl}/items/${itemId}/messages/read`, {});
   }
+
+  addMember(itemId: number, userId: number): Observable<any> {
+    return this.http.post<any>(`${this.apiUrl}/items/${itemId}/members`, { userId });
+  }
+
+  removeMember(itemId: number, userId: number): Observable<any> {
+    return this.http.delete<any>(`${this.apiUrl}/items/${itemId}/members/${userId}`);
+  }
 }

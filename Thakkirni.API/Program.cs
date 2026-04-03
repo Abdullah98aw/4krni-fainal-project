@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using Thakkirni.API.Data;
+using Thakkirni.API.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -10,6 +11,9 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+
+// Background service: auto-mark tasks as OVERDUE when dueDate passes
+builder.Services.AddHostedService<OverdueStatusService>();
 
 // Configure DbContext
 builder.Services.AddDbContext<AppDbContext>(options =>
