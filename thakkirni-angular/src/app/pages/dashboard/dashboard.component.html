@@ -64,7 +64,7 @@
             </div>
           </div>
           <div class="user-stat-counts">
-            <span class="count-badge todo">{{ stat.todo }} قيد التنفيذ</span>
+            <span class="count-badge todo">{{ stat.active }} قيد التنفيذ</span>
             <span class="count-badge overdue">{{ stat.overdue }} متأخرة</span>
             <span class="count-badge completed">{{ stat.completed }} مكتملة</span>
           </div>
@@ -92,7 +92,7 @@
             <p class="item-number">#{{ item.itemNumber }}</p>
           </div>
           <div class="item-status" [class]="item.status.toLowerCase()">
-            {{ item.status === 'TODO' ? 'قيد التنفيذ' : item.status === 'OVERDUE' ? 'متأخرة' : 'مكتملة' }}
+            {{ item.status === 'ACTIVE' ? 'قيد التنفيذ' : item.status === 'OVERDUE' ? 'متأخرة' : 'مكتملة' }}
           </div>
         </a>
       </div>

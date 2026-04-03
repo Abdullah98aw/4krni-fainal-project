@@ -16,7 +16,7 @@ export const routes: Routes = [
     path: 'todo',
     loadComponent: () => import('./pages/items-list/items-list.component').then(m => m.ItemsListComponent),
     canActivate: [authGuard],
-    data: { status: 'TODO' }
+    data: { status: 'ACTIVE' }
   },
   {
     path: 'overdue',

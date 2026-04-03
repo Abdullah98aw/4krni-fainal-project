@@ -60,7 +60,7 @@ export class DashboardComponent implements OnInit {
   }
 
   get totalItems() { return this.items.length; }
-  get todoItems() { return this.items.filter(i => i.status === 'TODO').length; }
+  get todoItems() { return this.items.filter(i => i.status === 'ACTIVE').length; }
   get overdueItems() { return this.items.filter(i => i.status === 'OVERDUE').length; }
   get completedItems() { return this.items.filter(i => i.status === 'COMPLETED').length; }
 
@@ -69,9 +69,9 @@ export class DashboardComponent implements OnInit {
       const assigned = this.items.filter(i => i.assigneeIds?.includes(user.id));
       const completed = assigned.filter(i => i.status === 'COMPLETED');
       const overdue = assigned.filter(i => i.status === 'OVERDUE');
-      const todo = assigned.filter(i => i.status === 'TODO');
+      const todo = assigned.filter(i => i.status === 'ACTIVE');
       const rate = assigned.length > 0 ? Math.round((completed.length / assigned.length) * 100) : 0;
-      return { user, total: assigned.length, completed: completed.length, overdue: overdue.length, todo: todo.length, rate };
+      return { user, total: assigned.length, completed: completed.length, overdue: overdue.length, active: todo.length, rate };
     }).sort((a, b) => b.total - a.total);
   }
 

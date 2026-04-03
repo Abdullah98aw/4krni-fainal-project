@@ -14,7 +14,7 @@
         </div>
         <div class="manager-stats">
           <div class="stat-item">
-            <span class="stat-num todo">{{ stat.todo }}</span>
+            <span class="stat-num todo">{{ stat.active }}</span>
             <span class="stat-lbl">قيد التنفيذ</span>
           </div>
           <div class="stat-item">
@@ -50,7 +50,7 @@
           </span>
           <span class="item-title">{{ item.title }}</span>
           <span class="item-status" [class]="item.status.toLowerCase()">
-            {{ item.status === 'TODO' ? 'قيد التنفيذ' : item.status === 'OVERDUE' ? 'متأخرة' : 'مكتملة' }}
+            {{ item.status === 'ACTIVE' ? 'قيد التنفيذ' : item.status === 'OVERDUE' ? 'متأخرة' : 'مكتملة' }}
           </span>
         </a>
       </div>

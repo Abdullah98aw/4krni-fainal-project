@@ -21,7 +21,7 @@ export class ItemsListComponent implements OnInit {
   filteredItems: Item[] = [];
   users: User[] = [];
   loading = true;
-  status: ItemStatus = 'TODO';
+  status: ItemStatus = 'ACTIVE';
   searchQuery = '';
   filterType = '';
   showCreateModal = false;
@@ -38,7 +38,7 @@ export class ItemsListComponent implements OnInit {
   };
 
   titles: Record<ItemStatus, string> = {
-    'TODO': 'قيد التنفيذ',
+    'ACTIVE': 'قيد التنفيذ',
     'OVERDUE': 'المتأخرة',
     'COMPLETED': 'المكتملة'
   };

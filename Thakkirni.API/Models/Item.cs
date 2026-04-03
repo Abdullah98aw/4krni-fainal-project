@@ -31,9 +31,11 @@ namespace Thakkirni.API.Models
         [MaxLength(20)]
         public string? CommitteeType { get; set; } // "INTERNAL" or "EXTERNAL"
 
-        [Required]
-        [MaxLength(20)]
-        public string Status { get; set; } // "TODO", "OVERDUE", "COMPLETED"
+        // Status is NO LONGER stored — it is computed dynamically:
+        //   CompletedDate != null  => "COMPLETED"
+        //   DueDate < UtcNow       => "OVERDUE"
+        //   otherwise              => "ACTIVE"
+        public DateTime? CompletedDate { get; set; }
 
         [Required]
         public DateTime DueDate { get; set; }
@@ -55,5 +57,12 @@ namespace Thakkirni.API.Models
         public ICollection<ItemAssignee> Assignees { get; set; }
         public ICollection<ChatMessage> Messages { get; set; }
         public ICollection<AuditEvent> AuditEvents { get; set; }
+
+        // ── Computed status helper (used in backend only) ──────────────────
+        [NotMapped]
+        public string ComputedStatus =>
+            CompletedDate.HasValue ? "COMPLETED" :
+            DueDate < DateTime.UtcNow ? "OVERDUE" :
+            "ACTIVE";
     }
 }

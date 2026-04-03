@@ -11,8 +11,12 @@ namespace Thakkirni.API.DTOs
         public string Title { get; set; }
         public string Description { get; set; }
         public string Importance { get; set; }
-        public string CommitteeType { get; set; }
+        public string? CommitteeType { get; set; }
+
+        // Computed dynamically — never stored in DB
         public string Status { get; set; }
+
+        public DateTime? CompletedDate { get; set; }
         public DateTime DueDate { get; set; }
         public int CreatedById { get; set; }
         public int DepartmentId { get; set; }
@@ -32,7 +36,7 @@ namespace Thakkirni.API.DTOs
     {
         public string Type { get; set; }
         public string Title { get; set; }
-        public string Description { get; set; }
+        public string? Description { get; set; }
         public string Importance { get; set; }
         public string? CommitteeType { get; set; }
         public DateTime DueDate { get; set; }

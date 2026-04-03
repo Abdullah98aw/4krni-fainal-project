@@ -56,9 +56,9 @@ export class ManagersComponent implements OnInit {
       const assigned = this.items.filter(i => i.assigneeIds?.includes(user.id));
       const completed = assigned.filter(i => i.status === 'COMPLETED');
       const overdue = assigned.filter(i => i.status === 'OVERDUE');
-      const todo = assigned.filter(i => i.status === 'TODO');
+      const todo = assigned.filter(i => i.status === 'ACTIVE');
       const rate = assigned.length > 0 ? Math.round((completed.length / assigned.length) * 100) : 0;
-      return { user, total: assigned.length, completed: completed.length, overdue: overdue.length, todo: todo.length, rate, items: assigned };
+      return { user, total: assigned.length, completed: completed.length, overdue: overdue.length, active: todo.length, rate, items: assigned };
     }).sort((a, b) => b.total - a.total);
   }
 

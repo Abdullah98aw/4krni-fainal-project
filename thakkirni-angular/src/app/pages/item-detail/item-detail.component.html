@@ -47,7 +47,7 @@
               </span>
             </div>
             <span class="status-badge" [class]="item.status.toLowerCase()">
-              {{ item.status === 'TODO' ? 'قيد التنفيذ' : item.status === 'OVERDUE' ? 'متأخرة' : 'مكتملة' }}
+              {{ item.status === 'ACTIVE' ? 'قيد التنفيذ' : item.status === 'OVERDUE' ? 'متأخرة' : 'مكتملة' }}
             </span>
           </div>
 

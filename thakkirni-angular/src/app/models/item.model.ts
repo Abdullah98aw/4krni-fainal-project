@@ -1,5 +1,6 @@
 export type ItemType = 'TASK' | 'COMMITTEE';
-export type ItemStatus = 'TODO' | 'OVERDUE' | 'COMPLETED';
+// Status is computed by the backend from DueDate and CompletedDate — never stored
+export type ItemStatus = 'ACTIVE' | 'OVERDUE' | 'COMPLETED';
 export type Importance = 'NORMAL' | 'SECRET';
 export type CommitteeType = 'INTERNAL' | 'EXTERNAL';
 
@@ -11,7 +12,8 @@ export interface Item {
   description: string;
   importance: Importance;
   committeeType?: CommitteeType;
-  status: ItemStatus;
+  status: ItemStatus;          // computed by backend
+  completedDate?: string;      // ISO string, null if not completed
   dueDate: string;
   createdById: number;
   departmentId: number;
