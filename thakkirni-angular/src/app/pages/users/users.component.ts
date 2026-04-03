@@ -25,6 +25,14 @@ export class UsersComponent implements OnInit {
   /** Holds the last API error message to display in the error banner */
   apiError: string | null = null;
 
+  /** Predefined job title values — must match the backend AllowedJobTitles set */
+  readonly jobTitles: string[] = [
+    'مدير وكالة',
+    'مدير إدارة',
+    'مدير شعبة',
+    'موظف'
+  ];
+
   // Organization lookup lists
   agencies: Agency[] = [];
   departments: Department[] = [];

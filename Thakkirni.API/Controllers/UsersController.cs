@@ -65,13 +65,17 @@ namespace Thakkirni.API.Controllers
             if (dto.Role != "ADMIN" && dto.Role != "USER")
                 return BadRequest(new { errors = new[] { "الدور يجب أن يكون ADMIN أو USER" } });
 
-            // 3. Duplicate NationalId check
+            // 3. JobTitle must be one of the predefined values (if provided)
+            if (!string.IsNullOrWhiteSpace(dto.JobTitle) && !AllowedJobTitles.Contains(dto.JobTitle))
+                return BadRequest(new { errors = new[] { $"المسمى الوظيفي غير صالح. القيم المسموح بها: {string.Join("، ", AllowedJobTitles)}" } });
+
+            // 4. Duplicate NationalId check
             var nationalIdExists = await _context.Users
                 .AnyAsync(u => u.NationalId == dto.NationalId);
             if (nationalIdExists)
                 return BadRequest(new { errors = new[] { "رقم الهوية مستخدم بالفعل" } });
 
-            // 4. Organization hierarchy validation
+            // 5. Organization hierarchy validation
             var orgError = await ValidateOrgHierarchy(dto.AgencyId, dto.DepartmentId, dto.SectionId);
             if (orgError != null)
                 return BadRequest(new { errors = new[] { orgError } });
@@ -122,7 +126,11 @@ namespace Thakkirni.API.Controllers
             if (dto.Role != "ADMIN" && dto.Role != "USER")
                 return BadRequest(new { errors = new[] { "الدور يجب أن يكون ADMIN أو USER" } });
 
-            // 3. Duplicate NationalId check (exclude current user)
+            // 3. JobTitle must be one of the predefined values (if provided)
+            if (!string.IsNullOrWhiteSpace(dto.JobTitle) && !AllowedJobTitles.Contains(dto.JobTitle))
+                return BadRequest(new { errors = new[] { $"المسمى الوظيفي غير صالح. القيم المسموح بها: {string.Join("، ", AllowedJobTitles)}" } });
+
+            // 4. Duplicate NationalId check (exclude current user)
             var nationalIdExists = await _context.Users
                 .AnyAsync(u => u.NationalId == dto.NationalId && u.Id != id);
             if (nationalIdExists)
@@ -176,9 +184,16 @@ namespace Thakkirni.API.Controllers
         // ─────────────────────────────────────────────
 
         /// <summary>
-        /// Validates the Agency → Department → Section hierarchy.
-        /// Returns an Arabic error message string if invalid, or null if valid.
+        /// The allowed predefined job title values.
         /// </summary>
+        private static readonly HashSet<string> AllowedJobTitles = new()
+        {
+            "مدير وكالة",
+            "مدير إدارة",
+            "مدير شعبة",
+            "موظف"
+        };
+
         private async Task<string?> ValidateOrgHierarchy(int? agencyId, int? departmentId, int? sectionId)
         {
             // Section requires Department

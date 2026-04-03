@@ -126,14 +126,15 @@
       <!-- Job Title -->
       <div class="form-group">
         <label>المسمى الوظيفي</label>
-        <input
-          type="text"
+        <select
           [(ngModel)]="editingUser.jobTitle"
           name="jobTitle"
-          maxlength="100"
           class="form-input"
-          placeholder="أدخل المسمى الوظيفي"
-        />
+        >
+          <option [ngValue]="undefined">-- اختر المسمى الوظيفي --</option>
+          <option *ngFor="let title of jobTitles" [value]="title">{{ title }}</option>
+        </select>
+        <span class="field-hint">اختر مسمى وظيفياً من القائمة</span>
       </div>
 
       <!-- Role -->
