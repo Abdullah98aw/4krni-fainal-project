@@ -1,5 +1,9 @@
 import { Routes } from '@angular/router';
+<<<<<<< HEAD
 import { authGuard, adminGuard, managerGuard } from './guards/auth.guard';
+=======
+import { authGuard, adminGuard } from './guards/auth.guard';
+>>>>>>> 69119a5b575ed698fed4fc8fa490e61e1e596f62
 
 export const routes: Routes = [
   { path: '', redirectTo: '/dashboard', pathMatch: 'full' },
@@ -41,6 +45,7 @@ export const routes: Routes = [
     canActivate: [authGuard, adminGuard]
   },
   {
+<<<<<<< HEAD
     path: 'organizations-admin',
     loadComponent: () => import('./pages/organizations-admin/organizations-admin.component').then(m => m.OrganizationsAdminComponent),
     canActivate: [authGuard, adminGuard]
@@ -49,6 +54,11 @@ export const routes: Routes = [
     path: 'managers',
     loadComponent: () => import('./pages/managers/managers.component').then(m => m.ManagersComponent),
     canActivate: [authGuard, managerGuard]
+=======
+    path: 'managers',
+    loadComponent: () => import('./pages/managers/managers.component').then(m => m.ManagersComponent),
+    canActivate: [authGuard, adminGuard]
+>>>>>>> 69119a5b575ed698fed4fc8fa490e61e1e596f62
   },
   { path: '**', redirectTo: '/dashboard' }
 ];

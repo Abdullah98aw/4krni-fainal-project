@@ -42,7 +42,11 @@ export class ManagersComponent implements OnInit {
         this.cdr.detectChanges();
       }
     });
+<<<<<<< HEAD
     this.usersService.getScopedUsers().subscribe({
+=======
+    this.usersService.getUsers().subscribe({
+>>>>>>> 69119a5b575ed698fed4fc8fa490e61e1e596f62
       next: (users) => {
         this.users = [...users];
         this.cdr.detectChanges();

@@ -12,19 +12,25 @@ export interface Department {
   id: number;
   name: string;
   agencyId: number;
+<<<<<<< HEAD
   agencyName?: string;
+=======
+>>>>>>> 69119a5b575ed698fed4fc8fa490e61e1e596f62
 }
 
 export interface Section {
   id: number;
   name: string;
   departmentId: number;
+<<<<<<< HEAD
   departmentName?: string;
 }
 
 export interface JobTitle {
   id: number;
   name: string;
+=======
+>>>>>>> 69119a5b575ed698fed4fc8fa490e61e1e596f62
 }
 
 @Injectable({
@@ -39,6 +45,7 @@ export class OrganizationService {
     return this.http.get<Agency[]>(`${this.apiUrl}/organizations/agencies`);
   }
 
+<<<<<<< HEAD
   createAgency(payload: Partial<Agency>): Observable<Agency> {
     return this.http.post<Agency>(`${this.apiUrl}/organizations/agencies`, payload);
   }
@@ -105,5 +112,17 @@ export class OrganizationService {
 
   deleteJobTitle(id: number): Observable<void> {
     return this.http.delete<void>(`${this.apiUrl}/jobtitles/${id}`);
+=======
+  getDepartmentsByAgency(agencyId: number): Observable<Department[]> {
+    return this.http.get<Department[]>(
+      `${this.apiUrl}/organizations/agencies/${agencyId}/departments`
+    );
+  }
+
+  getSectionsByDepartment(departmentId: number): Observable<Section[]> {
+    return this.http.get<Section[]>(
+      `${this.apiUrl}/organizations/departments/${departmentId}/sections`
+    );
+>>>>>>> 69119a5b575ed698fed4fc8fa490e61e1e596f62
   }
 }

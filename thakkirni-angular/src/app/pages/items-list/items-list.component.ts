@@ -1,13 +1,20 @@
 import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+<<<<<<< HEAD
 import { HttpErrorResponse } from '@angular/common/http';
 import { RouterModule, ActivatedRoute } from '@angular/router';
+=======
+import { RouterModule, ActivatedRoute, Router } from '@angular/router';
+>>>>>>> 69119a5b575ed698fed4fc8fa490e61e1e596f62
 import { LayoutComponent } from '../../components/layout/layout.component';
 import { ItemsService } from '../../services/items.service';
 import { UsersService } from '../../services/users.service';
 import { AuthService } from '../../services/auth.service';
+<<<<<<< HEAD
 import { OrganizationService, Agency, Department, Section } from '../../services/organization.service';
+=======
+>>>>>>> 69119a5b575ed698fed4fc8fa490e61e1e596f62
 import { Item, CreateItemRequest, ItemStatus } from '../../models/item.model';
 import { User } from '../../models/user.model';
 
@@ -22,13 +29,17 @@ export class ItemsListComponent implements OnInit {
   items: Item[] = [];
   filteredItems: Item[] = [];
   users: User[] = [];
+<<<<<<< HEAD
   agencies: Agency[] = [];
   departments: Department[] = [];
   sections: Section[] = [];
+=======
+>>>>>>> 69119a5b575ed698fed4fc8fa490e61e1e596f62
   loading = true;
   status: ItemStatus = 'ACTIVE';
   searchQuery = '';
   filterType = '';
+<<<<<<< HEAD
   selectedAgencyId?: number;
   selectedDepartmentId?: number;
   selectedSectionId?: number;
@@ -39,6 +50,10 @@ export class ItemsListComponent implements OnInit {
 
   memberNationalIdsText = '';
   assigneeNationalIdsText = '';
+=======
+  showCreateModal = false;
+  creating = false;
+>>>>>>> 69119a5b575ed698fed4fc8fa490e61e1e596f62
 
   newItem: CreateItemRequest = {
     type: 'TASK',
@@ -47,6 +62,7 @@ export class ItemsListComponent implements OnInit {
     importance: 'NORMAL',
     dueDate: '',
     memberIds: [],
+<<<<<<< HEAD
     assigneeIds: [],
     memberNationalIds: [],
     assigneeNationalIds: []
@@ -56,11 +72,21 @@ export class ItemsListComponent implements OnInit {
     ACTIVE: 'قيد التنفيذ',
     OVERDUE: 'المتأخرة',
     COMPLETED: 'المكتملة'
+=======
+    assigneeIds: []
+  };
+
+  titles: Record<ItemStatus, string> = {
+    'ACTIVE': 'قيد التنفيذ',
+    'OVERDUE': 'المتأخرة',
+    'COMPLETED': 'المكتملة'
+>>>>>>> 69119a5b575ed698fed4fc8fa490e61e1e596f62
   };
 
   constructor(
     private itemsService: ItemsService,
     private usersService: UsersService,
+<<<<<<< HEAD
     private orgService: OrganizationService,
     public authService: AuthService,
     private route: ActivatedRoute,
@@ -72,10 +98,22 @@ export class ItemsListComponent implements OnInit {
       this.status = data['status'] || 'ACTIVE';
       this.loadFilterData();
       this.loadAssignableUsers();
+=======
+    public authService: AuthService,
+    private route: ActivatedRoute,
+    private router: Router,
+    private cdr: ChangeDetectorRef
+  ) {}
+
+  ngOnInit() {
+    this.route.data.subscribe(data => {
+      this.status = data['status'] || 'TODO';
+>>>>>>> 69119a5b575ed698fed4fc8fa490e61e1e596f62
       this.loadData();
     });
   }
 
+<<<<<<< HEAD
   loadFilterData(): void {
     if (!this.authService.isAdminOrManager()) return;
 
@@ -152,12 +190,18 @@ export class ItemsListComponent implements OnInit {
       departmentId: this.selectedDepartmentId,
       sectionId: this.selectedSectionId
     }).subscribe({
+=======
+  loadData() {
+    this.loading = true;
+    this.itemsService.getItems().subscribe({
+>>>>>>> 69119a5b575ed698fed4fc8fa490e61e1e596f62
       next: (items) => {
         this.items = items.filter(i => i.status === this.status);
         this.applyFilters();
         this.loading = false;
         this.cdr.detectChanges();
       },
+<<<<<<< HEAD
       error: (err) => {
         console.error('Items error:', err);
         this.loading = false;
@@ -169,19 +213,38 @@ export class ItemsListComponent implements OnInit {
   applyFilters(): void {
     let result = [...this.items];
 
+=======
+      error: (err) => { console.error('Items error:', err); this.loading = false; this.cdr.detectChanges(); }
+    });
+    this.usersService.getUsers().subscribe({
+      next: (users) => { this.users = [...users]; this.cdr.detectChanges(); },
+      error: () => {}
+    });
+  }
+
+  applyFilters() {
+    let result = [...this.items];
+>>>>>>> 69119a5b575ed698fed4fc8fa490e61e1e596f62
     if (this.searchQuery) {
       const q = this.searchQuery.toLowerCase();
       result = result.filter(i => i.title.toLowerCase().includes(q) || i.itemNumber.toLowerCase().includes(q));
     }
+<<<<<<< HEAD
 
     if (this.filterType) {
       result = result.filter(i => i.type === this.filterType);
     }
 
+=======
+    if (this.filterType) {
+      result = result.filter(i => i.type === this.filterType);
+    }
+>>>>>>> 69119a5b575ed698fed4fc8fa490e61e1e596f62
     this.filteredItems = result;
     this.cdr.detectChanges();
   }
 
+<<<<<<< HEAD
   createItem(): void {
     if (this.creating || !this.newItem.title.trim() || !this.newItem.dueDate) return;
 
@@ -235,6 +298,23 @@ export class ItemsListComponent implements OnInit {
   }
 
   resetNewItem(): void {
+=======
+  createItem() {
+    if (!this.newItem.title || !this.newItem.dueDate) return;
+    this.creating = true;
+    this.itemsService.createItem(this.newItem).subscribe({
+      next: () => {
+        this.showCreateModal = false;
+        this.creating = false;
+        this.resetNewItem();
+        this.loadData();
+      },
+      error: () => { this.creating = false; }
+    });
+  }
+
+  resetNewItem() {
+>>>>>>> 69119a5b575ed698fed4fc8fa490e61e1e596f62
     this.newItem = {
       type: 'TASK',
       title: '',
@@ -242,6 +322,7 @@ export class ItemsListComponent implements OnInit {
       importance: 'NORMAL',
       dueDate: '',
       memberIds: [],
+<<<<<<< HEAD
       assigneeIds: [],
       memberNationalIds: [],
       assigneeNationalIds: []
@@ -252,6 +333,13 @@ export class ItemsListComponent implements OnInit {
   }
 
   toggleMember(userId: number): void {
+=======
+      assigneeIds: []
+    };
+  }
+
+  toggleMember(userId: number) {
+>>>>>>> 69119a5b575ed698fed4fc8fa490e61e1e596f62
     const idx = this.newItem.memberIds.indexOf(userId);
     if (idx >= 0) {
       this.newItem.memberIds.splice(idx, 1);
@@ -260,7 +348,11 @@ export class ItemsListComponent implements OnInit {
     }
   }
 
+<<<<<<< HEAD
   toggleAssignee(userId: number): void {
+=======
+  toggleAssignee(userId: number) {
+>>>>>>> 69119a5b575ed698fed4fc8fa490e61e1e596f62
     const idx = this.newItem.assigneeIds.indexOf(userId);
     if (idx >= 0) {
       this.newItem.assigneeIds.splice(idx, 1);
@@ -277,6 +369,7 @@ export class ItemsListComponent implements OnInit {
     return this.titles[this.status];
   }
 
+<<<<<<< HEAD
   exportCurrentView(): void {
     if (this.exporting) return;
 
@@ -336,5 +429,9 @@ export class ItemsListComponent implements OnInit {
     }
 
     return 'تعذر إنشاء العنصر. تحقق من البيانات وصلاحيات المستخدمين المحددين.';
+=======
+  get isAdmin(): boolean {
+    return this.authService.isAdmin();
+>>>>>>> 69119a5b575ed698fed4fc8fa490e61e1e596f62
   }
 }

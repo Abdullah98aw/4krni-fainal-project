@@ -18,7 +18,10 @@ namespace Thakkirni.API.Data
         public DbSet<AuditEvent> AuditEvents { get; set; }
         public DbSet<Notification> Notifications { get; set; }
         public DbSet<MessageReadStatus> MessageReadStatuses { get; set; }
+<<<<<<< HEAD
         public DbSet<JobTitle> JobTitles { get; set; }
+=======
+>>>>>>> 69119a5b575ed698fed4fc8fa490e61e1e596f62
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -38,6 +41,7 @@ namespace Thakkirni.API.Data
                 .HasForeignKey(s => s.DepartmentId)
                 .OnDelete(DeleteBehavior.Cascade);
 
+<<<<<<< HEAD
             modelBuilder.Entity<JobTitle>()
                 .HasIndex(j => j.Name)
                 .IsUnique();
@@ -67,6 +71,8 @@ namespace Thakkirni.API.Data
             modelBuilder.Entity<ItemAssignee>()
                 .HasKey(ia => new { ia.ItemId, ia.UserId });
 
+=======
+>>>>>>> 69119a5b575ed698fed4fc8fa490e61e1e596f62
             // Unique constraint on NationalId
             modelBuilder.Entity<User>()
                 .HasIndex(u => u.NationalId)
@@ -138,7 +144,11 @@ namespace Thakkirni.API.Data
 
             modelBuilder.Entity<ChatMessage>()
                 .HasOne(cm => cm.User)
+<<<<<<< HEAD
                 .WithMany(u => u.Messages)
+=======
+                .WithMany()
+>>>>>>> 69119a5b575ed698fed4fc8fa490e61e1e596f62
                 .HasForeignKey(cm => cm.UserId)
                 .OnDelete(DeleteBehavior.Restrict);
 

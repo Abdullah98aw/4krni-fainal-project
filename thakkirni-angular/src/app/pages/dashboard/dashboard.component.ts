@@ -48,9 +48,14 @@ export class DashboardComponent implements OnInit {
       }
     });
 
+<<<<<<< HEAD
     if (this.authService.isAdminOrManager()) {
       const usersRequest = this.authService.isAdmin() ? this.usersService.getUsers() : this.usersService.getScopedUsers();
       usersRequest.subscribe({
+=======
+    if (this.authService.isAdmin()) {
+      this.usersService.getUsers().subscribe({
+>>>>>>> 69119a5b575ed698fed4fc8fa490e61e1e596f62
         next: (users) => {
           this.users = [...users];
           this.cdr.detectChanges();
@@ -72,6 +77,7 @@ export class DashboardComponent implements OnInit {
       const overdue = assigned.filter(i => i.status === 'OVERDUE');
       const todo = assigned.filter(i => i.status === 'ACTIVE');
       const rate = assigned.length > 0 ? Math.round((completed.length / assigned.length) * 100) : 0;
+<<<<<<< HEAD
       return { user, total: assigned.length, completed: completed.length, overdue: overdue.length, active: todo.length, rate, items: assigned };
     }).sort((a, b) => b.total - a.total);
   }
@@ -110,5 +116,17 @@ export class DashboardComponent implements OnInit {
   toggleUser(userId: number) {
     this.expandedUser = this.expandedUser === userId ? null : userId;
     this.cdr.detectChanges();
+=======
+      return { user, total: assigned.length, completed: completed.length, overdue: overdue.length, active: todo.length, rate };
+    }).sort((a, b) => b.total - a.total);
+  }
+
+  toggleUser(userId: number) {
+    this.expandedUser = this.expandedUser === userId ? null : userId;
+  }
+
+  getUserItems(userId: number) {
+    return this.items.filter(i => i.createdById === userId || i.memberIds?.includes(userId));
+>>>>>>> 69119a5b575ed698fed4fc8fa490e61e1e596f62
   }
 }

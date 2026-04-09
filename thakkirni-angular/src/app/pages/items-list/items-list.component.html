@@ -1,10 +1,14 @@
 <app-layout [title]="pageTitle">
   <ng-container slot="actions">
+<<<<<<< HEAD
     <button type="button" class="btn-primary secondary" (click)="exportCurrentView()" [disabled]="exporting">
       <span class="material-icons">download</span>
       {{ exporting ? 'جاري التصدير...' : 'تصدير Excel' }}
     </button>
     <button *ngIf="canCreate" type="button" class="btn-primary" (click)="showCreateModal = true">
+=======
+    <button *ngIf="isAdmin" class="btn-primary" (click)="showCreateModal = true">
+>>>>>>> 69119a5b575ed698fed4fc8fa490e61e1e596f62
       <span class="material-icons">add</span>
       إضافة جديد
     </button>
@@ -26,6 +30,7 @@
       <select [(ngModel)]="filterType" (ngModelChange)="applyFilters()" class="filter-select">
         <option value="">الكل</option>
         <option value="TASK">مهام</option>
+<<<<<<< HEAD
         <option value="COMMITTEE">لجان</option>
       </select>
 
@@ -45,6 +50,10 @@
           <option *ngFor="let section of sections" [ngValue]="section.id">{{ section.name }}</option>
         </select>
       </ng-container>
+=======
+        <option value="COMMITTEE">منظمات</option>
+      </select>
+>>>>>>> 69119a5b575ed698fed4fc8fa490e61e1e596f62
     </div>
 
     <!-- Loading -->
@@ -65,7 +74,11 @@
         <div class="item-card-header">
           <div class="item-badges">
             <span class="badge type" [class]="item.type.toLowerCase()">
+<<<<<<< HEAD
               {{ item.type === 'TASK' ? 'مهمة' : 'لجنة' }}
+=======
+              {{ item.type === 'TASK' ? 'مهمة' : 'منظمة' }}
+>>>>>>> 69119a5b575ed698fed4fc8fa490e61e1e596f62
             </span>
             <span *ngIf="item.importance === 'SECRET'" class="badge secret">سري</span>
           </div>
@@ -78,7 +91,13 @@
             <span class="material-icons">event</span>
             {{ item.dueDate | date:'dd/MM/yyyy' }}
           </div>
+<<<<<<< HEAD
           <div *ngIf="item.hasUnreadUpdates" class="unread-dot" title="تحديثات جديدة"></div>
+=======
+          <div *ngIf="item.unreadCount && item.unreadCount > 0" class="unread-badge">
+            {{ item.unreadCount }} رسالة
+          </div>
+>>>>>>> 69119a5b575ed698fed4fc8fa490e61e1e596f62
         </div>
       </a>
     </div>
@@ -89,17 +108,28 @@
 <div *ngIf="showCreateModal" class="modal-overlay" (click)="showCreateModal = false">
   <div class="modal" (click)="$event.stopPropagation()" dir="rtl">
     <div class="modal-header">
+<<<<<<< HEAD
       <h2>إضافة مهمة / لجنة جديدة</h2>
       <button (click)="showCreateModal = false">✕</button>
     </div>
     <div class="modal-body">
       <div *ngIf="createError" class="error-banner">{{ createError }}</div>
+=======
+      <h2>إضافة مهمة / منظمة جديدة</h2>
+      <button (click)="showCreateModal = false">✕</button>
+    </div>
+    <div class="modal-body">
+>>>>>>> 69119a5b575ed698fed4fc8fa490e61e1e596f62
       <div class="form-row">
         <div class="form-group">
           <label>النوع</label>
           <select [(ngModel)]="newItem.type" class="form-input">
             <option value="TASK">مهمة</option>
+<<<<<<< HEAD
             <option value="COMMITTEE">لجنة</option>
+=======
+            <option value="COMMITTEE">منظمة</option>
+>>>>>>> 69119a5b575ed698fed4fc8fa490e61e1e596f62
           </select>
         </div>
         <div class="form-group">
@@ -112,7 +142,11 @@
       </div>
 
       <div *ngIf="newItem.type === 'COMMITTEE'" class="form-group">
+<<<<<<< HEAD
         <label>نوع اللجنة</label>
+=======
+        <label>نوع المنظمة</label>
+>>>>>>> 69119a5b575ed698fed4fc8fa490e61e1e596f62
         <select [(ngModel)]="newItem.committeeType" class="form-input">
           <option value="INTERNAL">داخلية</option>
           <option value="EXTERNAL">خارجية</option>
@@ -134,6 +168,7 @@
         <input type="date" [(ngModel)]="newItem.dueDate" class="form-input" />
       </div>
 
+<<<<<<< HEAD
       <div *ngIf="newItem.type === 'COMMITTEE'" class="form-group">
         <label>أعضاء اللجنة برقم الهوية</label>
         <textarea
@@ -157,6 +192,8 @@
         ></textarea>
       </div>
 
+=======
+>>>>>>> 69119a5b575ed698fed4fc8fa490e61e1e596f62
       <div class="form-group">
         <label>الأعضاء</label>
         <div class="users-checkboxes">
@@ -186,8 +223,13 @@
       </div>
     </div>
     <div class="modal-footer">
+<<<<<<< HEAD
       <button type="button" class="btn-secondary" (click)="showCreateModal = false">إلغاء</button>
       <button type="button" class="btn-primary" (click)="createItem()" [disabled]="creating || !newItem.title.trim() || !newItem.dueDate">
+=======
+      <button class="btn-secondary" (click)="showCreateModal = false">إلغاء</button>
+      <button class="btn-primary" (click)="createItem()" [disabled]="creating">
+>>>>>>> 69119a5b575ed698fed4fc8fa490e61e1e596f62
         <span *ngIf="!creating">إضافة</span>
         <span *ngIf="creating">جاري الإضافة...</span>
       </button>

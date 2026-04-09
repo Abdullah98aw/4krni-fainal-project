@@ -1,6 +1,10 @@
 <app-layout title="إدارة المستخدمين">
   <ng-container slot="actions">
+<<<<<<< HEAD
     <button type="button" class="btn-primary" (click)="openCreate()">
+=======
+    <button class="btn-primary" (click)="openCreate()">
+>>>>>>> 69119a5b575ed698fed4fc8fa490e61e1e596f62
       <span class="material-icons">person_add</span>
       إضافة مستخدم
     </button>
@@ -21,7 +25,11 @@
           <p class="user-job-title" *ngIf="user.jobTitle">{{ user.jobTitle }}</p>
         </div>
         <span class="role-badge" [class]="user.role.toLowerCase()">
+<<<<<<< HEAD
           {{ user.role === 'ADMIN' ? 'مدير نظام' : user.role === 'MANAGER' ? 'مدير' : 'مستخدم' }}
+=======
+          {{ user.role === 'ADMIN' ? 'مدير' : 'موظف' }}
+>>>>>>> 69119a5b575ed698fed4fc8fa490e61e1e596f62
         </span>
       </div>
       <div class="user-card-body">
@@ -58,7 +66,10 @@
       <button (click)="showModal = false">✕</button>
     </div>
     <div class="modal-body">
+<<<<<<< HEAD
       <p *ngIf="!isEditing" class="form-hint">يجب إدخال كلمة مرور للمستخدم الجديد.</p>
+=======
+>>>>>>> 69119a5b575ed698fed4fc8fa490e61e1e596f62
 
       <!-- API Error Banner -->
       <div *ngIf="apiError" class="error-banner">
@@ -104,6 +115,7 @@
         </span>
       </div>
 
+<<<<<<< HEAD
       <div class="form-group">
         <label>{{ isEditing ? 'كلمة مرور جديدة (اختياري)' : 'كلمة المرور' }} <span *ngIf="!isEditing" class="required-star">*</span></label>
         <input
@@ -117,6 +129,8 @@
         />
       </div>
 
+=======
+>>>>>>> 69119a5b575ed698fed4fc8fa490e61e1e596f62
       <!-- National ID -->
       <div class="form-group">
         <label>رقم الهوية <span class="required-star">*</span></label>
@@ -126,7 +140,11 @@
           name="nationalId"
           #nationalIdField="ngModel"
           required
+<<<<<<< HEAD
           maxlength="10"
+=======
+          maxlength="20"
+>>>>>>> 69119a5b575ed698fed4fc8fa490e61e1e596f62
           class="form-input"
           [class.input-error]="nationalIdField.invalid && nationalIdField.touched"
           placeholder="أدخل رقم الهوية"
@@ -163,9 +181,14 @@
           [class.input-error]="roleField.invalid && roleField.touched"
         >
           <option value="">-- اختر الدور --</option>
+<<<<<<< HEAD
           <option value="USER">مستخدم</option>
           <option value="MANAGER">مدير</option>
           <option value="ADMIN">مدير نظام</option>
+=======
+          <option value="USER">موظف</option>
+          <option value="ADMIN">مدير</option>
+>>>>>>> 69119a5b575ed698fed4fc8fa490e61e1e596f62
         </select>
         <span class="field-error" *ngIf="roleField.invalid && roleField.touched">
           الدور مطلوب
@@ -209,7 +232,10 @@
         <label>القسم</label>
         <select
           [(ngModel)]="editingUser.sectionId"
+<<<<<<< HEAD
           (ngModelChange)="onSectionChange($event)"
+=======
+>>>>>>> 69119a5b575ed698fed4fc8fa490e61e1e596f62
           name="sectionId"
           class="form-input"
           [disabled]="!editingUser.departmentId || sections.length === 0"
@@ -224,7 +250,11 @@
 
     </div>
     <div class="modal-footer">
+<<<<<<< HEAD
       <button type="button" class="btn-secondary" (click)="showModal = false">إلغاء</button>
+=======
+      <button class="btn-secondary" (click)="showModal = false">إلغاء</button>
+>>>>>>> 69119a5b575ed698fed4fc8fa490e61e1e596f62
       <button
         class="btn-primary"
         (click)="save()"

@@ -2,7 +2,10 @@ import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
+<<<<<<< HEAD
 import { finalize } from 'rxjs/operators';
+=======
+>>>>>>> 69119a5b575ed698fed4fc8fa490e61e1e596f62
 import { AuthService } from '../../services/auth.service';
 
 @Component({
@@ -24,6 +27,7 @@ export class LoginComponent {
     }
   }
 
+<<<<<<< HEAD
   onSubmit(): void {
     if (this.loading) return;
 
@@ -40,5 +44,19 @@ export class LoginComponent {
           this.error = err?.error?.message || 'فشل تسجيل الدخول. تأكد من البريد الإلكتروني وكلمة المرور.';
         }
       });
+=======
+  onSubmit() {
+    this.loading = true;
+    this.error = '';
+    this.authService.login({ email: this.email, password: this.password }).subscribe({
+      next: () => {
+        this.router.navigate(['/dashboard']);
+      },
+      error: (err) => {
+        this.error = 'البريد الإلكتروني غير صحيح';
+        this.loading = false;
+      }
+    });
+>>>>>>> 69119a5b575ed698fed4fc8fa490e61e1e596f62
   }
 }

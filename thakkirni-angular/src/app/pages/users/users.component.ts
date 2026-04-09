@@ -21,9 +21,25 @@ export class UsersComponent implements OnInit {
   saving = false;
   editingUser: Partial<User> = {};
   isEditing = false;
+<<<<<<< HEAD
   apiError: string | null = null;
 
   jobTitles: string[] = [];
+=======
+
+  /** Holds the last API error message to display in the error banner */
+  apiError: string | null = null;
+
+  /** Predefined job title values — must match the backend AllowedJobTitles set */
+  readonly jobTitles: string[] = [
+    'مدير وكالة',
+    'مدير إدارة',
+    'مدير شعبة',
+    'موظف'
+  ];
+
+  // Organization lookup lists
+>>>>>>> 69119a5b575ed698fed4fc8fa490e61e1e596f62
   agencies: Agency[] = [];
   departments: Department[] = [];
   sections: Section[] = [];
@@ -37,7 +53,10 @@ export class UsersComponent implements OnInit {
   ngOnInit() {
     this.loadUsers();
     this.loadAgencies();
+<<<<<<< HEAD
     this.loadJobTitles();
+=======
+>>>>>>> 69119a5b575ed698fed4fc8fa490e61e1e596f62
   }
 
   loadUsers() {
@@ -64,6 +83,7 @@ export class UsersComponent implements OnInit {
     });
   }
 
+<<<<<<< HEAD
   loadJobTitles() {
     this.orgService.getJobTitles().subscribe({
       next: (titles) => {
@@ -75,6 +95,14 @@ export class UsersComponent implements OnInit {
   }
 
   onAgencyChange(agencyId: number | undefined) {
+=======
+  // ─────────────────────────────────────────────
+  // Cascading dropdown handlers
+  // ─────────────────────────────────────────────
+
+  onAgencyChange(agencyId: number | undefined) {
+    // Always reset child selections when Agency changes
+>>>>>>> 69119a5b575ed698fed4fc8fa490e61e1e596f62
     this.editingUser.departmentId = undefined;
     this.editingUser.sectionId = undefined;
     this.departments = [];
@@ -93,15 +121,22 @@ export class UsersComponent implements OnInit {
   }
 
   onDepartmentChange(departmentId: number | undefined) {
+<<<<<<< HEAD
+=======
+    // Always reset Section when Department changes
+>>>>>>> 69119a5b575ed698fed4fc8fa490e61e1e596f62
     this.editingUser.sectionId = undefined;
     this.sections = [];
     this.apiError = null;
 
+<<<<<<< HEAD
     const selectedDepartment = this.departments.find(d => d.id === departmentId);
     if (selectedDepartment) {
       this.editingUser.agencyId = selectedDepartment.agencyId;
     }
 
+=======
+>>>>>>> 69119a5b575ed698fed4fc8fa490e61e1e596f62
     if (departmentId && departmentId > 0) {
       this.orgService.getSectionsByDepartment(departmentId).subscribe({
         next: (sects) => {
@@ -113,6 +148,7 @@ export class UsersComponent implements OnInit {
     }
   }
 
+<<<<<<< HEAD
   onSectionChange(sectionId: number | undefined) {
     if (!sectionId) {
       return;
@@ -144,6 +180,14 @@ export class UsersComponent implements OnInit {
       jobTitle: '',
       password: ''
     };
+=======
+  // ─────────────────────────────────────────────
+  // Modal open helpers
+  // ─────────────────────────────────────────────
+
+  openCreate() {
+    this.editingUser = { role: 'USER' };
+>>>>>>> 69119a5b575ed698fed4fc8fa490e61e1e596f62
     this.departments = [];
     this.sections = [];
     this.apiError = null;
@@ -153,16 +197,24 @@ export class UsersComponent implements OnInit {
   }
 
   openEdit(user: User) {
+<<<<<<< HEAD
     this.editingUser = {
       ...user,
       password: ''
     };
+=======
+    this.editingUser = { ...user };
+>>>>>>> 69119a5b575ed698fed4fc8fa490e61e1e596f62
     this.departments = [];
     this.sections = [];
     this.apiError = null;
     this.isEditing = true;
     this.showModal = true;
 
+<<<<<<< HEAD
+=======
+    // Pre-load departments and sections for the existing user's org assignment
+>>>>>>> 69119a5b575ed698fed4fc8fa490e61e1e596f62
     if (user.agencyId) {
       this.orgService.getDepartmentsByAgency(user.agencyId).subscribe({
         next: (depts) => {
@@ -185,10 +237,18 @@ export class UsersComponent implements OnInit {
     this.cdr.detectChanges();
   }
 
+<<<<<<< HEAD
+=======
+  // ─────────────────────────────────────────────
+  // Client-side form validity guard
+  // ─────────────────────────────────────────────
+
+>>>>>>> 69119a5b575ed698fed4fc8fa490e61e1e596f62
   isFormValid(): boolean {
     const name = (this.editingUser.name ?? '').trim();
     const nationalId = (this.editingUser.nationalId ?? '').trim();
     const role = (this.editingUser.role ?? '').trim();
+<<<<<<< HEAD
     const email = (this.editingUser.email ?? '').trim();
 
     if (!this.isEditing && !(this.editingUser.password ?? '').trim()) {
@@ -221,6 +281,24 @@ export class UsersComponent implements OnInit {
     const action = this.isEditing
       ? this.usersService.updateUser(this.editingUser.id!, payload)
       : this.usersService.createUser(payload);
+=======
+    return name.length > 0 && nationalId.length > 0 && role.length > 0;
+  }
+
+  // ─────────────────────────────────────────────
+  // Save (create or update)
+  // ─────────────────────────────────────────────
+
+  save() {
+    if (!this.isFormValid()) return;
+
+    this.saving = true;
+    this.apiError = null;
+
+    const action = this.isEditing
+      ? this.usersService.updateUser(this.editingUser.id!, this.editingUser)
+      : this.usersService.createUser(this.editingUser);
+>>>>>>> 69119a5b575ed698fed4fc8fa490e61e1e596f62
 
     action.subscribe({
       next: () => {
@@ -236,6 +314,7 @@ export class UsersComponent implements OnInit {
     });
   }
 
+<<<<<<< HEAD
 
   private synchronizeHierarchyBeforeSave(): void {
     const selectedSection = this.sections.find(s => s.id === this.editingUser.sectionId);
@@ -263,10 +342,16 @@ export class UsersComponent implements OnInit {
       this.editingUser.sectionId = undefined;
     }
   }
+=======
+  // ─────────────────────────────────────────────
+  // Delete
+  // ─────────────────────────────────────────────
+>>>>>>> 69119a5b575ed698fed4fc8fa490e61e1e596f62
 
   deleteUser(id: number) {
     if (!confirm('هل أنت متأكد من حذف هذا المستخدم؟')) return;
     this.usersService.deleteUser(id).subscribe({
+<<<<<<< HEAD
       next: () => this.loadUsers(),
       error: (err: HttpErrorResponse) => {
         this.apiError = this.extractErrorMessage(err);
@@ -282,5 +367,40 @@ export class UsersComponent implements OnInit {
     }
 
     return err.error?.message || 'حدث خطأ أثناء حفظ البيانات';
+=======
+      next: () => { this.loadUsers(); },
+      error: () => {}
+    });
+  }
+
+  // ─────────────────────────────────────────────
+  // Private helpers
+  // ─────────────────────────────────────────────
+
+  /**
+   * Extracts a user-friendly Arabic error message from an HTTP error response.
+   * Handles both structured { errors: string[] } and plain string responses.
+   */
+  private extractErrorMessage(err: HttpErrorResponse): string {
+    if (err.error) {
+      // Structured backend validation response: { errors: ["..."] }
+      if (err.error.errors && Array.isArray(err.error.errors) && err.error.errors.length > 0) {
+        return err.error.errors.join(' | ');
+      }
+      // Single message string
+      if (typeof err.error === 'string') {
+        return err.error;
+      }
+      // { message: "..." }
+      if (err.error.message) {
+        return err.error.message;
+      }
+    }
+    // Fallback by HTTP status
+    if (err.status === 400) return 'البيانات المدخلة غير صحيحة. يرجى مراجعة الحقول.';
+    if (err.status === 409) return 'رقم الهوية مستخدم بالفعل.';
+    if (err.status === 401 || err.status === 403) return 'غير مصرح لك بتنفيذ هذه العملية.';
+    return 'حدث خطأ غير متوقع. يرجى المحاولة مجدداً.';
+>>>>>>> 69119a5b575ed698fed4fc8fa490e61e1e596f62
   }
 }

@@ -16,10 +16,13 @@ export class UsersService {
     return this.http.get<User[]>(`${this.apiUrl}/users`);
   }
 
+<<<<<<< HEAD
   getScopedUsers(): Observable<User[]> {
     return this.http.get<User[]>(`${this.apiUrl}/users/team`);
   }
 
+=======
+>>>>>>> 69119a5b575ed698fed4fc8fa490e61e1e596f62
   createUser(user: Partial<User>): Observable<User> {
     return this.http.post<User>(`${this.apiUrl}/users`, user);
   }

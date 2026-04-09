@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Thakkirni.API.Data;
 
@@ -11,9 +12,11 @@ using Thakkirni.API.Data;
 namespace Thakkirni.API.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260331211400_MakeCommitteeTypeNullable")]
+    partial class MakeCommitteeTypeNullable
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -21,24 +24,6 @@ namespace Thakkirni.API.Migrations
                 .HasAnnotation("Relational:MaxIdentifierLength", 128);
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
-
-            modelBuilder.Entity("Thakkirni.API.Models.Agency", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("Agencies");
-                });
 
             modelBuilder.Entity("Thakkirni.API.Models.AuditEvent", b =>
                 {
@@ -106,17 +91,29 @@ namespace Thakkirni.API.Migrations
 
                     b.HasKey("Id");
 
-<<<<<<< HEAD
-                    b.HasIndex("UserId");
-
-                    b.HasIndex("ItemId", "CreatedAt");
-=======
                     b.HasIndex("ItemId");
 
                     b.HasIndex("UserId");
->>>>>>> 69119a5b575ed698fed4fc8fa490e61e1e596f62
 
                     b.ToTable("ChatMessages");
+                });
+
+            modelBuilder.Entity("Thakkirni.API.Models.Company", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("Companies");
                 });
 
             modelBuilder.Entity("Thakkirni.API.Models.Department", b =>
@@ -127,7 +124,7 @@ namespace Thakkirni.API.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
-                    b.Property<int>("AgencyId")
+                    b.Property<int>("CompanyId")
                         .HasColumnType("int");
 
                     b.Property<string>("Name")
@@ -137,7 +134,7 @@ namespace Thakkirni.API.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("AgencyId");
+                    b.HasIndex("CompanyId");
 
                     b.ToTable("Departments");
                 });
@@ -153,9 +150,6 @@ namespace Thakkirni.API.Migrations
                     b.Property<string>("CommitteeType")
                         .HasMaxLength(20)
                         .HasColumnType("nvarchar(20)");
-
-                    b.Property<DateTime?>("CompletedDate")
-                        .HasColumnType("datetime2");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
@@ -183,6 +177,11 @@ namespace Thakkirni.API.Migrations
                         .HasMaxLength(20)
                         .HasColumnType("nvarchar(20)");
 
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
                     b.Property<string>("Title")
                         .IsRequired()
                         .HasMaxLength(200)
@@ -198,46 +197,30 @@ namespace Thakkirni.API.Migrations
 
                     b.HasKey("Id");
 
-<<<<<<< HEAD
-                    b.HasIndex("ItemNumber")
-                        .IsUnique();
-
-                    b.HasIndex("CreatedById", "DueDate");
-
-                    b.HasIndex("DepartmentId", "UpdatedAt");
-=======
                     b.HasIndex("CreatedById");
 
                     b.HasIndex("DepartmentId");
->>>>>>> 69119a5b575ed698fed4fc8fa490e61e1e596f62
 
                     b.ToTable("Items");
                 });
 
             modelBuilder.Entity("Thakkirni.API.Models.ItemAssignee", b =>
                 {
-<<<<<<< HEAD
-=======
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("int");
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
->>>>>>> 69119a5b575ed698fed4fc8fa490e61e1e596f62
                     b.Property<int>("ItemId")
                         .HasColumnType("int");
 
                     b.Property<int>("UserId")
                         .HasColumnType("int");
 
-<<<<<<< HEAD
-                    b.HasKey("ItemId", "UserId");
-=======
                     b.HasKey("Id");
 
                     b.HasIndex("ItemId");
->>>>>>> 69119a5b575ed698fed4fc8fa490e61e1e596f62
 
                     b.HasIndex("UserId");
 
@@ -246,39 +229,28 @@ namespace Thakkirni.API.Migrations
 
             modelBuilder.Entity("Thakkirni.API.Models.ItemMember", b =>
                 {
-<<<<<<< HEAD
-=======
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("int");
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
->>>>>>> 69119a5b575ed698fed4fc8fa490e61e1e596f62
                     b.Property<int>("ItemId")
                         .HasColumnType("int");
 
                     b.Property<int>("UserId")
                         .HasColumnType("int");
 
-<<<<<<< HEAD
-                    b.HasKey("ItemId", "UserId");
-=======
                     b.HasKey("Id");
 
                     b.HasIndex("ItemId");
->>>>>>> 69119a5b575ed698fed4fc8fa490e61e1e596f62
 
                     b.HasIndex("UserId");
 
                     b.ToTable("ItemMembers");
                 });
 
-<<<<<<< HEAD
-            modelBuilder.Entity("Thakkirni.API.Models.JobTitle", b =>
-=======
             modelBuilder.Entity("Thakkirni.API.Models.MessageReadStatus", b =>
->>>>>>> 69119a5b575ed698fed4fc8fa490e61e1e596f62
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -286,39 +258,13 @@ namespace Thakkirni.API.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
-<<<<<<< HEAD
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("Name")
-                        .IsUnique();
-
-                    b.ToTable("JobTitles");
-                });
-
-            modelBuilder.Entity("Thakkirni.API.Models.MessageReadStatus", b =>
-                {
-                    b.Property<int>("ItemId")
-=======
                     b.Property<int>("MessageId")
->>>>>>> 69119a5b575ed698fed4fc8fa490e61e1e596f62
                         .HasColumnType("int");
 
                     b.Property<int>("UserId")
                         .HasColumnType("int");
 
-<<<<<<< HEAD
-                    b.Property<DateTime>("ReadAt")
-                        .HasColumnType("datetime2");
-
-                    b.HasKey("ItemId", "UserId");
-=======
                     b.HasKey("Id");
->>>>>>> 69119a5b575ed698fed4fc8fa490e61e1e596f62
 
                     b.ToTable("MessageReadStatuses");
                 });
@@ -351,11 +297,7 @@ namespace Thakkirni.API.Migrations
 
                     b.HasKey("Id");
 
-<<<<<<< HEAD
-                    b.HasIndex("UserId", "IsRead", "CreatedAt");
-=======
                     b.HasIndex("UserId");
->>>>>>> 69119a5b575ed698fed4fc8fa490e61e1e596f62
 
                     b.ToTable("Notifications");
                 });
@@ -391,32 +333,15 @@ namespace Thakkirni.API.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
-                    b.Property<int?>("AgencyId")
-                        .HasColumnType("int");
-
                     b.Property<string>("Avatar")
-<<<<<<< HEAD
-=======
                         .IsRequired()
->>>>>>> 69119a5b575ed698fed4fc8fa490e61e1e596f62
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<int?>("DepartmentId")
                         .HasColumnType("int");
 
                     b.Property<string>("Email")
-<<<<<<< HEAD
-=======
                         .IsRequired()
->>>>>>> 69119a5b575ed698fed4fc8fa490e61e1e596f62
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
-
-                    b.Property<string>("JobTitle")
-<<<<<<< HEAD
-=======
-                        .IsRequired()
->>>>>>> 69119a5b575ed698fed4fc8fa490e61e1e596f62
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
 
@@ -426,43 +351,18 @@ namespace Thakkirni.API.Migrations
                         .HasColumnType("nvarchar(100)");
 
                     b.Property<string>("NationalId")
-<<<<<<< HEAD
-                        .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)");
-
-                    b.Property<string>("PasswordHash")
-                        .HasMaxLength(512)
-                        .HasColumnType("nvarchar(512)");
-
-=======
                         .IsRequired()
                         .HasMaxLength(20)
                         .HasColumnType("nvarchar(20)");
 
->>>>>>> 69119a5b575ed698fed4fc8fa490e61e1e596f62
                     b.Property<string>("Role")
                         .IsRequired()
                         .HasMaxLength(20)
                         .HasColumnType("nvarchar(20)");
 
-                    b.Property<int?>("SectionId")
-                        .HasColumnType("int");
-
                     b.HasKey("Id");
 
-                    b.HasIndex("AgencyId");
-
                     b.HasIndex("DepartmentId");
-
-                    b.HasIndex("NationalId")
-<<<<<<< HEAD
-                        .IsUnique()
-                        .HasFilter("[NationalId] IS NOT NULL");
-=======
-                        .IsUnique();
->>>>>>> 69119a5b575ed698fed4fc8fa490e61e1e596f62
-
-                    b.HasIndex("SectionId");
 
                     b.ToTable("Users");
                 });
@@ -495,11 +395,7 @@ namespace Thakkirni.API.Migrations
                         .IsRequired();
 
                     b.HasOne("Thakkirni.API.Models.User", "User")
-<<<<<<< HEAD
-                        .WithMany("Messages")
-=======
                         .WithMany()
->>>>>>> 69119a5b575ed698fed4fc8fa490e61e1e596f62
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
@@ -511,13 +407,13 @@ namespace Thakkirni.API.Migrations
 
             modelBuilder.Entity("Thakkirni.API.Models.Department", b =>
                 {
-                    b.HasOne("Thakkirni.API.Models.Agency", "Agency")
+                    b.HasOne("Thakkirni.API.Models.Company", "Company")
                         .WithMany("Departments")
-                        .HasForeignKey("AgencyId")
+                        .HasForeignKey("CompanyId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.Navigation("Agency");
+                    b.Navigation("Company");
                 });
 
             modelBuilder.Entity("Thakkirni.API.Models.Item", b =>
@@ -601,29 +497,14 @@ namespace Thakkirni.API.Migrations
 
             modelBuilder.Entity("Thakkirni.API.Models.User", b =>
                 {
-                    b.HasOne("Thakkirni.API.Models.Agency", "Agency")
-                        .WithMany()
-                        .HasForeignKey("AgencyId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
                     b.HasOne("Thakkirni.API.Models.Department", "Department")
                         .WithMany("Users")
-                        .HasForeignKey("DepartmentId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
-                    b.HasOne("Thakkirni.API.Models.Section", "Section")
-                        .WithMany("Users")
-                        .HasForeignKey("SectionId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
-                    b.Navigation("Agency");
+                        .HasForeignKey("DepartmentId");
 
                     b.Navigation("Department");
-
-                    b.Navigation("Section");
                 });
 
-            modelBuilder.Entity("Thakkirni.API.Models.Agency", b =>
+            modelBuilder.Entity("Thakkirni.API.Models.Company", b =>
                 {
                     b.Navigation("Departments");
                 });
@@ -648,21 +529,11 @@ namespace Thakkirni.API.Migrations
                     b.Navigation("Messages");
                 });
 
-            modelBuilder.Entity("Thakkirni.API.Models.Section", b =>
-                {
-                    b.Navigation("Users");
-                });
-
             modelBuilder.Entity("Thakkirni.API.Models.User", b =>
                 {
                     b.Navigation("ItemAssignees");
 
                     b.Navigation("ItemMembers");
-<<<<<<< HEAD
-
-                    b.Navigation("Messages");
-=======
->>>>>>> 69119a5b575ed698fed4fc8fa490e61e1e596f62
                 });
 #pragma warning restore 612, 618
         }

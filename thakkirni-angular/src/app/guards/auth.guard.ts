@@ -23,6 +23,7 @@ export const adminGuard = () => {
 
   return router.createUrlTree(['/dashboard']);
 };
+<<<<<<< HEAD
 
 export const managerGuard = () => {
   const authService = inject(AuthService);
@@ -34,3 +35,5 @@ export const managerGuard = () => {
 
   return router.createUrlTree(['/dashboard']);
 };
+=======
+>>>>>>> 69119a5b575ed698fed4fc8fa490e61e1e596f62

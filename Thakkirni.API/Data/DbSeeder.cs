@@ -1,6 +1,9 @@
 using Microsoft.EntityFrameworkCore;
 using Thakkirni.API.Models;
+<<<<<<< HEAD
 using Thakkirni.API.Services;
+=======
+>>>>>>> 69119a5b575ed698fed4fc8fa490e61e1e596f62
 
 namespace Thakkirni.API.Data
 {
@@ -9,6 +12,7 @@ namespace Thakkirni.API.Data
         public static void Seed(AppDbContext context)
         {
             context.Database.EnsureCreated();
+<<<<<<< HEAD
             EnsureSchema(context);
 
             if (!context.JobTitles.Any())
@@ -23,6 +27,8 @@ namespace Thakkirni.API.Data
                 );
                 context.SaveChanges();
             }
+=======
+>>>>>>> 69119a5b575ed698fed4fc8fa490e61e1e596f62
 
             if (!context.Users.Any())
             {
@@ -51,8 +57,12 @@ namespace Thakkirni.API.Data
                     DepartmentId = dept1.Id,
                     SectionId = section1.Id,
                     JobTitle = "مدير تقنية المعلومات",
+<<<<<<< HEAD
                     PasswordHash = PasswordHasherService.HashPassword("Admin@123"),
                     Avatar = string.Empty
+=======
+                    Avatar = ""
+>>>>>>> 69119a5b575ed698fed4fc8fa490e61e1e596f62
                 };
                 var user2 = new User
                 {
@@ -64,14 +74,19 @@ namespace Thakkirni.API.Data
                     DepartmentId = dept1.Id,
                     SectionId = section2.Id,
                     JobTitle = "مهندسة دعم فني",
+<<<<<<< HEAD
                     PasswordHash = PasswordHasherService.HashPassword("User@123"),
                     Avatar = string.Empty
+=======
+                    Avatar = ""
+>>>>>>> 69119a5b575ed698fed4fc8fa490e61e1e596f62
                 };
                 var user3 = new User
                 {
                     Name = "محمد عبدالله القحطاني",
                     Email = "mohammed@example.com",
                     NationalId = "3456789012",
+<<<<<<< HEAD
                     Role = "MANAGER",
                     AgencyId = agency.Id,
                     DepartmentId = dept2.Id,
@@ -79,10 +94,19 @@ namespace Thakkirni.API.Data
                     JobTitle = "مدير إدارة",
                     PasswordHash = PasswordHasherService.HashPassword("Manager@123"),
                     Avatar = string.Empty
+=======
+                    Role = "USER",
+                    AgencyId = agency.Id,
+                    DepartmentId = dept2.Id,
+                    SectionId = section3.Id,
+                    JobTitle = "أخصائي موارد بشرية",
+                    Avatar = ""
+>>>>>>> 69119a5b575ed698fed4fc8fa490e61e1e596f62
                 };
                 context.Users.AddRange(user1, user2, user3);
                 context.SaveChanges();
             }
+<<<<<<< HEAD
             else
             {
                 var updated = false;
@@ -112,6 +136,8 @@ IF COL_LENGTH('Users', 'PasswordHash') IS NULL
     ALTER TABLE Users ADD PasswordHash NVARCHAR(512) NULL;
 ");
             }
+=======
+>>>>>>> 69119a5b575ed698fed4fc8fa490e61e1e596f62
         }
     }
 }

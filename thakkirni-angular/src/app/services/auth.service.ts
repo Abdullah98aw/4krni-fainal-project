@@ -21,12 +21,16 @@ export class AuthService {
   }
 
   login(credentials: LoginRequest): Observable<AuthResponse> {
+<<<<<<< HEAD
     const normalizedCredentials: LoginRequest = {
       email: credentials.email.trim().toLowerCase(),
       password: credentials.password
     };
 
     return this.http.post<AuthResponse>(`${this.apiUrl}/auth/login`, normalizedCredentials).pipe(
+=======
+    return this.http.post<AuthResponse>(`${this.apiUrl}/auth/login`, credentials).pipe(
+>>>>>>> 69119a5b575ed698fed4fc8fa490e61e1e596f62
       tap(response => {
         localStorage.setItem('token', response.token);
         localStorage.setItem('user', JSON.stringify(response.user));
@@ -56,6 +60,7 @@ export class AuthService {
   isAdmin(): boolean {
     return this.currentUser?.role === 'ADMIN';
   }
+<<<<<<< HEAD
 
   isManager(): boolean {
     return this.currentUser?.role === 'MANAGER';
@@ -68,4 +73,6 @@ export class AuthService {
   canManageItems(): boolean {
     return this.isAdmin() || this.isManager();
   }
+=======
+>>>>>>> 69119a5b575ed698fed4fc8fa490e61e1e596f62
 }

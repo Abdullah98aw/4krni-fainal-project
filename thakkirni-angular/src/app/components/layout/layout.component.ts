@@ -31,11 +31,15 @@ export class LayoutComponent implements OnInit {
 
   adminNavItems = [
     { label: 'المستخدمون', path: '/users', icon: 'group' },
+<<<<<<< HEAD
     { label: 'الهيكل التنظيمي', path: '/organizations-admin', icon: 'account_tree' }
   ];
 
   managerNavItems = [
     { label: 'تقارير الفريق', path: '/managers', icon: 'bar_chart' }
+=======
+    { label: 'تقارير المديرين', path: '/managers', icon: 'bar_chart' },
+>>>>>>> 69119a5b575ed698fed4fc8fa490e61e1e596f62
   ];
 
   constructor(
@@ -84,10 +88,13 @@ export class LayoutComponent implements OnInit {
     return this.authService.isAdmin();
   }
 
+<<<<<<< HEAD
   get isManager(): boolean {
     return this.authService.isManager();
   }
 
+=======
+>>>>>>> 69119a5b575ed698fed4fc8fa490e61e1e596f62
   get currentUser() {
     return this.authService.currentUser;
   }

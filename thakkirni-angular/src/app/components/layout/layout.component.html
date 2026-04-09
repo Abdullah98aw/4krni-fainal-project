@@ -9,7 +9,11 @@
       <img src="https://d2xsxph8kpxj0f.cloudfront.net/310519663400849792/Kjvu9H5c5ZRsmi7PeLLB8L/thakkirni-logo-mcL3sCZxkBusCn7XrJBXiV.webp" alt="ذكّرني" class="logo-img" />
       <div>
         <h2 class="logo-title">ذكّرني</h2>
+<<<<<<< HEAD
         <p class="logo-subtitle">إدارة المهام واللجان</p>
+=======
+        <p class="logo-subtitle">إدارة المهام والمنظمات</p>
+>>>>>>> 69119a5b575ed698fed4fc8fa490e61e1e596f62
       </div>
       <button class="close-btn" (click)="sidebarOpen = false">✕</button>
     </div>
@@ -26,10 +30,17 @@
         <span *ngIf="item.path === '/overdue' && unreadCount > 0" class="badge">{{ unreadCount }}</span>
       </a>
 
+<<<<<<< HEAD
       <div *ngIf="isAdmin || isManager" class="nav-divider"></div>
       <div *ngIf="isAdmin || isManager" class="nav-section-label">الإدارة</div>
 
       <a *ngFor="let item of managerNavItems"
+=======
+      <div *ngIf="isAdmin" class="nav-divider"></div>
+      <div *ngIf="isAdmin" class="nav-section-label">الإدارة</div>
+
+      <a *ngFor="let item of adminNavItems"
+>>>>>>> 69119a5b575ed698fed4fc8fa490e61e1e596f62
          [routerLink]="item.path"
          routerLinkActive="active"
          class="nav-item"
@@ -37,6 +48,7 @@
         <span class="material-icons nav-icon">{{ item.icon }}</span>
         <span>{{ item.label }}</span>
       </a>
+<<<<<<< HEAD
 
       <ng-container *ngIf="isAdmin">
         <a *ngFor="let item of adminNavItems"
@@ -48,6 +60,8 @@
           <span>{{ item.label }}</span>
         </a>
       </ng-container>
+=======
+>>>>>>> 69119a5b575ed698fed4fc8fa490e61e1e596f62
     </nav>
 
     <!-- Bottom -->
@@ -61,7 +75,11 @@
         <div class="user-avatar">{{ currentUser?.name?.charAt(0) }}</div>
         <div class="user-details">
           <p class="user-name">{{ currentUser?.name }}</p>
+<<<<<<< HEAD
           <p class="user-role">{{ currentUser?.role === 'ADMIN' ? 'مدير نظام' : currentUser?.role === 'MANAGER' ? 'مدير' : 'مستخدم' }}</p>
+=======
+          <p class="user-role">{{ currentUser?.role === 'ADMIN' ? 'مدير' : 'موظف' }}</p>
+>>>>>>> 69119a5b575ed698fed4fc8fa490e61e1e596f62
         </div>
         <button class="logout-btn" (click)="logout()" title="تسجيل الخروج">
           <span class="material-icons">logout</span>

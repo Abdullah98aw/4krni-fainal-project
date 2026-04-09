@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Thakkirni.API.Data;
 
@@ -11,9 +12,11 @@ using Thakkirni.API.Data;
 namespace Thakkirni.API.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260403083608_RemoveStatusAddCompletedDate")]
+    partial class RemoveStatusAddCompletedDate
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -106,15 +109,9 @@ namespace Thakkirni.API.Migrations
 
                     b.HasKey("Id");
 
-<<<<<<< HEAD
-                    b.HasIndex("UserId");
-
-                    b.HasIndex("ItemId", "CreatedAt");
-=======
                     b.HasIndex("ItemId");
 
                     b.HasIndex("UserId");
->>>>>>> 69119a5b575ed698fed4fc8fa490e61e1e596f62
 
                     b.ToTable("ChatMessages");
                 });
@@ -198,46 +195,30 @@ namespace Thakkirni.API.Migrations
 
                     b.HasKey("Id");
 
-<<<<<<< HEAD
-                    b.HasIndex("ItemNumber")
-                        .IsUnique();
-
-                    b.HasIndex("CreatedById", "DueDate");
-
-                    b.HasIndex("DepartmentId", "UpdatedAt");
-=======
                     b.HasIndex("CreatedById");
 
                     b.HasIndex("DepartmentId");
->>>>>>> 69119a5b575ed698fed4fc8fa490e61e1e596f62
 
                     b.ToTable("Items");
                 });
 
             modelBuilder.Entity("Thakkirni.API.Models.ItemAssignee", b =>
                 {
-<<<<<<< HEAD
-=======
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("int");
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
->>>>>>> 69119a5b575ed698fed4fc8fa490e61e1e596f62
                     b.Property<int>("ItemId")
                         .HasColumnType("int");
 
                     b.Property<int>("UserId")
                         .HasColumnType("int");
 
-<<<<<<< HEAD
-                    b.HasKey("ItemId", "UserId");
-=======
                     b.HasKey("Id");
 
                     b.HasIndex("ItemId");
->>>>>>> 69119a5b575ed698fed4fc8fa490e61e1e596f62
 
                     b.HasIndex("UserId");
 
@@ -246,39 +227,28 @@ namespace Thakkirni.API.Migrations
 
             modelBuilder.Entity("Thakkirni.API.Models.ItemMember", b =>
                 {
-<<<<<<< HEAD
-=======
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("int");
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
->>>>>>> 69119a5b575ed698fed4fc8fa490e61e1e596f62
                     b.Property<int>("ItemId")
                         .HasColumnType("int");
 
                     b.Property<int>("UserId")
                         .HasColumnType("int");
 
-<<<<<<< HEAD
-                    b.HasKey("ItemId", "UserId");
-=======
                     b.HasKey("Id");
 
                     b.HasIndex("ItemId");
->>>>>>> 69119a5b575ed698fed4fc8fa490e61e1e596f62
 
                     b.HasIndex("UserId");
 
                     b.ToTable("ItemMembers");
                 });
 
-<<<<<<< HEAD
-            modelBuilder.Entity("Thakkirni.API.Models.JobTitle", b =>
-=======
             modelBuilder.Entity("Thakkirni.API.Models.MessageReadStatus", b =>
->>>>>>> 69119a5b575ed698fed4fc8fa490e61e1e596f62
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -286,39 +256,13 @@ namespace Thakkirni.API.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
-<<<<<<< HEAD
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("Name")
-                        .IsUnique();
-
-                    b.ToTable("JobTitles");
-                });
-
-            modelBuilder.Entity("Thakkirni.API.Models.MessageReadStatus", b =>
-                {
-                    b.Property<int>("ItemId")
-=======
                     b.Property<int>("MessageId")
->>>>>>> 69119a5b575ed698fed4fc8fa490e61e1e596f62
                         .HasColumnType("int");
 
                     b.Property<int>("UserId")
                         .HasColumnType("int");
 
-<<<<<<< HEAD
-                    b.Property<DateTime>("ReadAt")
-                        .HasColumnType("datetime2");
-
-                    b.HasKey("ItemId", "UserId");
-=======
                     b.HasKey("Id");
->>>>>>> 69119a5b575ed698fed4fc8fa490e61e1e596f62
 
                     b.ToTable("MessageReadStatuses");
                 });
@@ -351,11 +295,7 @@ namespace Thakkirni.API.Migrations
 
                     b.HasKey("Id");
 
-<<<<<<< HEAD
-                    b.HasIndex("UserId", "IsRead", "CreatedAt");
-=======
                     b.HasIndex("UserId");
->>>>>>> 69119a5b575ed698fed4fc8fa490e61e1e596f62
 
                     b.ToTable("Notifications");
                 });
@@ -395,28 +335,19 @@ namespace Thakkirni.API.Migrations
                         .HasColumnType("int");
 
                     b.Property<string>("Avatar")
-<<<<<<< HEAD
-=======
                         .IsRequired()
->>>>>>> 69119a5b575ed698fed4fc8fa490e61e1e596f62
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<int?>("DepartmentId")
                         .HasColumnType("int");
 
                     b.Property<string>("Email")
-<<<<<<< HEAD
-=======
                         .IsRequired()
->>>>>>> 69119a5b575ed698fed4fc8fa490e61e1e596f62
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
 
                     b.Property<string>("JobTitle")
-<<<<<<< HEAD
-=======
                         .IsRequired()
->>>>>>> 69119a5b575ed698fed4fc8fa490e61e1e596f62
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
 
@@ -426,20 +357,10 @@ namespace Thakkirni.API.Migrations
                         .HasColumnType("nvarchar(100)");
 
                     b.Property<string>("NationalId")
-<<<<<<< HEAD
-                        .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)");
-
-                    b.Property<string>("PasswordHash")
-                        .HasMaxLength(512)
-                        .HasColumnType("nvarchar(512)");
-
-=======
                         .IsRequired()
                         .HasMaxLength(20)
                         .HasColumnType("nvarchar(20)");
 
->>>>>>> 69119a5b575ed698fed4fc8fa490e61e1e596f62
                     b.Property<string>("Role")
                         .IsRequired()
                         .HasMaxLength(20)
@@ -455,12 +376,7 @@ namespace Thakkirni.API.Migrations
                     b.HasIndex("DepartmentId");
 
                     b.HasIndex("NationalId")
-<<<<<<< HEAD
-                        .IsUnique()
-                        .HasFilter("[NationalId] IS NOT NULL");
-=======
                         .IsUnique();
->>>>>>> 69119a5b575ed698fed4fc8fa490e61e1e596f62
 
                     b.HasIndex("SectionId");
 
@@ -495,11 +411,7 @@ namespace Thakkirni.API.Migrations
                         .IsRequired();
 
                     b.HasOne("Thakkirni.API.Models.User", "User")
-<<<<<<< HEAD
-                        .WithMany("Messages")
-=======
                         .WithMany()
->>>>>>> 69119a5b575ed698fed4fc8fa490e61e1e596f62
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
@@ -658,11 +570,6 @@ namespace Thakkirni.API.Migrations
                     b.Navigation("ItemAssignees");
 
                     b.Navigation("ItemMembers");
-<<<<<<< HEAD
-
-                    b.Navigation("Messages");
-=======
->>>>>>> 69119a5b575ed698fed4fc8fa490e61e1e596f62
                 });
 #pragma warning restore 612, 618
         }

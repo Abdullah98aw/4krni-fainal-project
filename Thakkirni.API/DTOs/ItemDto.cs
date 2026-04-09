@@ -1,12 +1,16 @@
 using System;
 using System.Collections.Generic;
+<<<<<<< HEAD
 using Microsoft.AspNetCore.Http;
+=======
+>>>>>>> 69119a5b575ed698fed4fc8fa490e61e1e596f62
 
 namespace Thakkirni.API.DTOs
 {
     public class ItemDto
     {
         public int Id { get; set; }
+<<<<<<< HEAD
         public string ItemNumber { get; set; } = string.Empty;
         public string Type { get; set; } = string.Empty;
         public string Title { get; set; } = string.Empty;
@@ -39,10 +43,32 @@ namespace Thakkirni.API.DTOs
         public string UserName { get; set; }
         public string Description { get; set; }
         public DateTime Timestamp { get; set; }
+=======
+        public string ItemNumber { get; set; }
+        public string Type { get; set; }
+        public string Title { get; set; }
+        public string Description { get; set; }
+        public string Importance { get; set; }
+        public string? CommitteeType { get; set; }
+
+        // Computed dynamically — never stored in DB
+        public string Status { get; set; }
+
+        public DateTime? CompletedDate { get; set; }
+        public DateTime DueDate { get; set; }
+        public int CreatedById { get; set; }
+        public int DepartmentId { get; set; }
+        public DateTime CreatedAt { get; set; }
+        public DateTime UpdatedAt { get; set; }
+        public List<int> MemberIds { get; set; }
+        public List<int> AssigneeIds { get; set; }
+        public int UnreadCount { get; set; }
+>>>>>>> 69119a5b575ed698fed4fc8fa490e61e1e596f62
     }
 
     public class SendMessageDto
     {
+<<<<<<< HEAD
         public string? Text { get; set; }
         public IFormFile? Attachment { get; set; }
     }
@@ -57,6 +83,9 @@ namespace Thakkirni.API.DTOs
         public bool HasAttachment { get; set; }
         public DateTime CreatedAt { get; set; }
         public string? UserName { get; set; }
+=======
+        public string Text { get; set; }
+>>>>>>> 69119a5b575ed698fed4fc8fa490e61e1e596f62
     }
 
     public class CreateItemDto
@@ -69,8 +98,11 @@ namespace Thakkirni.API.DTOs
         public DateTime DueDate { get; set; }
         public List<int>? MemberIds { get; set; }
         public List<int>? AssigneeIds { get; set; }
+<<<<<<< HEAD
         public List<string>? MemberNationalIds { get; set; }
         public List<string>? AssigneeNationalIds { get; set; }
+=======
+>>>>>>> 69119a5b575ed698fed4fc8fa490e61e1e596f62
     }
 
     public class MemberActionDto

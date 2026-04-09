@@ -46,7 +46,11 @@
         </div>
         <a *ngFor="let item of stat.items" [routerLink]="['/items', item.id]" class="item-row">
           <span class="item-type" [class]="item.type.toLowerCase()">
+<<<<<<< HEAD
             {{ item.type === 'TASK' ? 'مهمة' : 'لجنة' }}
+=======
+            {{ item.type === 'TASK' ? 'مهمة' : 'منظمة' }}
+>>>>>>> 69119a5b575ed698fed4fc8fa490e61e1e596f62
           </span>
           <span class="item-title">{{ item.title }}</span>
           <span class="item-status" [class]="item.status.toLowerCase()">

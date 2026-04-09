@@ -7,6 +7,10 @@ namespace Thakkirni.API.Models
 {
     public class Item
     {
+<<<<<<< HEAD
+=======
+        [Key]
+>>>>>>> 69119a5b575ed698fed4fc8fa490e61e1e596f62
         public int Id { get; set; }
 
         [Required]
@@ -41,10 +45,18 @@ namespace Thakkirni.API.Models
 
         [Required]
         public int CreatedById { get; set; }
+<<<<<<< HEAD
+=======
+        [ForeignKey("CreatedById")]
+>>>>>>> 69119a5b575ed698fed4fc8fa490e61e1e596f62
         public User CreatedBy { get; set; }
 
         [Required]
         public int DepartmentId { get; set; }
+<<<<<<< HEAD
+=======
+        [ForeignKey("DepartmentId")]
+>>>>>>> 69119a5b575ed698fed4fc8fa490e61e1e596f62
         public Department Department { get; set; }
 
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
