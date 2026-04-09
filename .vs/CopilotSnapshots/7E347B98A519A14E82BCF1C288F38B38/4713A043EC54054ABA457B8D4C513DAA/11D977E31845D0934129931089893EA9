@@ -1,0 +1,177 @@
+﻿using System;
+using Microsoft.EntityFrameworkCore.Migrations;
+
+#nullable disable
+
+namespace Thakkirni.API.Migrations
+{
+    public partial class UpdateMessageReadStatusSchema : Migration
+    {
+        protected override void Up(MigrationBuilder migrationBuilder)
+        {
+            // Modify existing MessageReadStatuses table safely.
+            // The script below is defensive: it checks for existence of columns, constraints
+            // and only performs changes when safe to do so. It will NOT create or drop the table.
+            migrationBuilder.Sql(@"
+IF OBJECT_ID('dbo.MessageReadStatuses') IS NULL
+BEGIN
+    THROW 51000, 'MessageReadStatuses table does not exist; migration expected an existing table.', 1;
+END
+
+-- Add ReadAt column (nullable first), set default, populate existing rows, then make NOT NULL
+IF COL_LENGTH('dbo.MessageReadStatuses','ReadAt') IS NULL
+BEGIN
+    ALTER TABLE dbo.MessageReadStatuses ADD ReadAt datetime2 NULL;
+    ALTER TABLE dbo.MessageReadStatuses ADD CONSTRAINT DF_MessageReadStatuses_ReadAt DEFAULT (GETUTCDATE()) FOR ReadAt;
+    UPDATE dbo.MessageReadStatuses SET ReadAt = GETUTCDATE() WHERE ReadAt IS NULL;
+    ALTER TABLE dbo.MessageReadStatuses ALTER COLUMN ReadAt datetime2 NOT NULL;
+END
+
+-- Ensure ItemId column exists (add nullable if missing)
+IF COL_LENGTH('dbo.MessageReadStatuses','ItemId') IS NULL
+BEGIN
+    ALTER TABLE dbo.MessageReadStatuses ADD ItemId int NULL;
+END
+
+-- If legacy MessageId column exists, migrate values to ItemId using ChatMessages
+IF COL_LENGTH('dbo.MessageReadStatuses','MessageId') IS NOT NULL
+BEGIN
+    UPDATE mrs
+    SET mrs.ItemId = cm.ItemId
+    FROM dbo.MessageReadStatuses mrs
+    INNER JOIN dbo.ChatMessages cm ON mrs.MessageId = cm.Id
+    WHERE mrs.ItemId IS NULL;
+END
+
+-- If all ItemId values are now non-null, make ItemId NOT NULL
+IF (SELECT COUNT(*) FROM dbo.MessageReadStatuses WHERE ItemId IS NULL) = 0
+BEGIN
+    ALTER TABLE dbo.MessageReadStatuses ALTER COLUMN ItemId int NOT NULL;
+END
+
+-- If MessageId column exists and ItemId populated, drop MessageId to remove legacy data
+IF COL_LENGTH('dbo.MessageReadStatuses','MessageId') IS NOT NULL AND (SELECT COUNT(*) FROM dbo.MessageReadStatuses WHERE ItemId IS NULL) = 0
+BEGIN
+    ALTER TABLE dbo.MessageReadStatuses DROP COLUMN MessageId;
+END
+
+-- Ensure UserId column exists
+IF COL_LENGTH('dbo.MessageReadStatuses','UserId') IS NULL
+BEGIN
+    THROW 51001, 'MessageReadStatuses.UserId column is missing; cannot continue migration.', 1;
+END
+
+-- Drop existing primary key if present (we will create composite PK when safe)
+IF EXISTS (SELECT 1 FROM sys.key_constraints kc WHERE kc.parent_object_id = OBJECT_ID('dbo.MessageReadStatuses') AND kc.type = 'PK')
+BEGIN
+    DECLARE @pkname sysname = (SELECT kc.name FROM sys.key_constraints kc WHERE kc.parent_object_id = OBJECT_ID('dbo.MessageReadStatuses') AND kc.type = 'PK');
+    EXEC('ALTER TABLE dbo.MessageReadStatuses DROP CONSTRAINT [' + @pkname + ']');
+END
+
+-- Create composite PK (ItemId, UserId) only when there are no NULLs and no duplicates
+IF (SELECT COUNT(*) FROM dbo.MessageReadStatuses WHERE ItemId IS NULL OR UserId IS NULL) = 0
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM (SELECT ItemId, UserId FROM dbo.MessageReadStatuses GROUP BY ItemId, UserId HAVING COUNT(*) > 1) AS dup)
+    BEGIN
+        ALTER TABLE dbo.MessageReadStatuses ADD CONSTRAINT PK_MessageReadStatuses PRIMARY KEY (ItemId, UserId);
+    END
+END
+
+-- Create indexes if they do not exist
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_MessageReadStatuses_ItemId' AND object_id = OBJECT_ID('dbo.MessageReadStatuses'))
+BEGIN
+    CREATE INDEX IX_MessageReadStatuses_ItemId ON dbo.MessageReadStatuses(ItemId);
+END
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_MessageReadStatuses_UserId' AND object_id = OBJECT_ID('dbo.MessageReadStatuses'))
+BEGIN
+    CREATE INDEX IX_MessageReadStatuses_UserId ON dbo.MessageReadStatuses(UserId);
+END
+
+-- Add foreign keys only when ItemId is populated
+IF NOT EXISTS (SELECT 1 FROM sys.foreign_keys WHERE name = 'FK_MessageReadStatuses_Items_ItemId')
+BEGIN
+    IF (SELECT COUNT(*) FROM dbo.MessageReadStatuses WHERE ItemId IS NULL) = 0
+    BEGIN
+        ALTER TABLE dbo.MessageReadStatuses ADD CONSTRAINT FK_MessageReadStatuses_Items_ItemId FOREIGN KEY (ItemId) REFERENCES dbo.Items(Id) ON DELETE CASCADE;
+    END
+END
+
+IF NOT EXISTS (SELECT 1 FROM sys.foreign_keys WHERE name = 'FK_MessageReadStatuses_Users_UserId')
+BEGIN
+    ALTER TABLE dbo.MessageReadStatuses ADD CONSTRAINT FK_MessageReadStatuses_Users_UserId FOREIGN KEY (UserId) REFERENCES dbo.Users(Id) ON DELETE NO ACTION;
+END
+
+");
+        }
+
+        protected override void Down(MigrationBuilder migrationBuilder)
+        {
+            // Remove foreign keys and index
+            try
+            {
+                migrationBuilder.DropForeignKey(name: "FK_MessageReadStatuses_Items_ItemId", table: "MessageReadStatuses");
+            }
+            catch { }
+            try
+            {
+                migrationBuilder.DropForeignKey(name: "FK_MessageReadStatuses_Users_UserId", table: "MessageReadStatuses");
+            }
+            catch { }
+
+            try
+            {
+                migrationBuilder.DropIndex(name: "IX_MessageReadStatuses_UserId_ItemId", table: "MessageReadStatuses");
+            }
+            catch { }
+
+            // Drop composite PK
+            try
+            {
+                migrationBuilder.DropPrimaryKey(name: "PK_MessageReadStatuses", table: "MessageReadStatuses");
+            }
+            catch { }
+
+            // Add legacy Id and MessageId columns back (best-effort)
+            migrationBuilder.AddColumn<int>(
+                name: "Id",
+                table: "MessageReadStatuses",
+                type: "int",
+                nullable: false,
+                defaultValue: 0)
+                .Annotation("SqlServer:Identity", "1, 1");
+
+            migrationBuilder.AddColumn<int>(
+                name: "MessageId",
+                table: "MessageReadStatuses",
+                type: "int",
+                nullable: true);
+
+            // Try to populate MessageId by picking a matching message for the ItemId if possible
+            migrationBuilder.Sql(@"
+                UPDATE mrs
+                SET mrs.MessageId = cm.Id
+                FROM MessageReadStatuses mrs
+                INNER JOIN ChatMessages cm ON cm.ItemId = mrs.ItemId
+                WHERE mrs.MessageId IS NULL
+            ");
+
+            // Drop new columns
+            try
+            {
+                migrationBuilder.DropColumn(name: "ItemId", table: "MessageReadStatuses");
+            }
+            catch { }
+            try
+            {
+                migrationBuilder.DropColumn(name: "ReadAt", table: "MessageReadStatuses");
+            }
+            catch { }
+
+            // Add PK on Id
+            migrationBuilder.AddPrimaryKey(
+                name: "PK_MessageReadStatuses",
+                table: "MessageReadStatuses",
+                column: "Id");
+        }
+    }
+}

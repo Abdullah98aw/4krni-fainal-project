@@ -1,0 +1,174 @@
+﻿using System;
+using Microsoft.EntityFrameworkCore.Migrations;
+
+#nullable disable
+
+namespace Thakkirni.API.Migrations
+{
+    public partial class UpdateMessageReadStatusSchema : Migration
+    {
+        protected override void Up(MigrationBuilder migrationBuilder)
+        {
+            // Add new columns
+            migrationBuilder.AddColumn<int>(
+                name: "ItemId",
+                table: "MessageReadStatuses",
+                type: "int",
+                nullable: false,
+                defaultValue: 0);
+
+            migrationBuilder.AddColumn<DateTime>(
+                name: "ReadAt",
+                table: "MessageReadStatuses",
+                type: "datetime2",
+                nullable: false,
+                defaultValueSql: "GETUTCDATE()");
+
+            // Migrate existing data: map old MessageId -> ItemId via ChatMessages
+            // If MessageId column exists, populate ItemId from corresponding ChatMessages
+            migrationBuilder.Sql(@"
+                UPDATE mrs
+                SET mrs.ItemId = cm.ItemId
+                FROM MessageReadStatuses mrs
+                INNER JOIN ChatMessages cm ON mrs.MessageId = cm.Id
+                WHERE mrs.MessageId IS NOT NULL
+            ");
+
+            // Drop primary key on Id (if present)
+            try
+            {
+                migrationBuilder.DropPrimaryKey(
+                    name: "PK_MessageReadStatuses",
+                    table: "MessageReadStatuses");
+            }
+            catch
+            {
+                // ignore if PK name differs
+            }
+
+            // Remove legacy columns if they exist
+            // Drop MessageId column
+            try
+            {
+                migrationBuilder.DropColumn(
+                    name: "MessageId",
+                    table: "MessageReadStatuses");
+            }
+            catch
+            {
+                // ignore if column not present
+            }
+
+            // Drop Id column
+            try
+            {
+                migrationBuilder.DropColumn(
+                    name: "Id",
+                    table: "MessageReadStatuses");
+            }
+            catch
+            {
+                // ignore if column not present
+            }
+
+            // Add composite primary key (ItemId, UserId)
+            migrationBuilder.AddPrimaryKey(
+                name: "PK_MessageReadStatuses",
+                table: "MessageReadStatuses",
+                columns: new[] { "ItemId", "UserId" });
+
+            // Add index to support queries by user
+            migrationBuilder.CreateIndex(
+                name: "IX_MessageReadStatuses_UserId_ItemId",
+                table: "MessageReadStatuses",
+                columns: new[] { "UserId", "ItemId" });
+
+            // Add foreign keys for integrity
+            migrationBuilder.AddForeignKey(
+                name: "FK_MessageReadStatuses_Items_ItemId",
+                table: "MessageReadStatuses",
+                column: "ItemId",
+                principalTable: "Items",
+                principalColumn: "Id",
+                onDelete: ReferentialAction.Cascade);
+
+            migrationBuilder.AddForeignKey(
+                name: "FK_MessageReadStatuses_Users_UserId",
+                table: "MessageReadStatuses",
+                column: "UserId",
+                principalTable: "Users",
+                principalColumn: "Id",
+                onDelete: ReferentialAction.Restrict);
+        }
+
+        protected override void Down(MigrationBuilder migrationBuilder)
+        {
+            // Remove foreign keys and index
+            try
+            {
+                migrationBuilder.DropForeignKey(name: "FK_MessageReadStatuses_Items_ItemId", table: "MessageReadStatuses");
+            }
+            catch { }
+            try
+            {
+                migrationBuilder.DropForeignKey(name: "FK_MessageReadStatuses_Users_UserId", table: "MessageReadStatuses");
+            }
+            catch { }
+
+            try
+            {
+                migrationBuilder.DropIndex(name: "IX_MessageReadStatuses_UserId_ItemId", table: "MessageReadStatuses");
+            }
+            catch { }
+
+            // Drop composite PK
+            try
+            {
+                migrationBuilder.DropPrimaryKey(name: "PK_MessageReadStatuses", table: "MessageReadStatuses");
+            }
+            catch { }
+
+            // Add legacy Id and MessageId columns back (best-effort)
+            migrationBuilder.AddColumn<int>(
+                name: "Id",
+                table: "MessageReadStatuses",
+                type: "int",
+                nullable: false,
+                defaultValue: 0)
+                .Annotation("SqlServer:Identity", "1, 1");
+
+            migrationBuilder.AddColumn<int>(
+                name: "MessageId",
+                table: "MessageReadStatuses",
+                type: "int",
+                nullable: true);
+
+            // Try to populate MessageId by picking a matching message for the ItemId if possible
+            migrationBuilder.Sql(@"
+                UPDATE mrs
+                SET mrs.MessageId = cm.Id
+                FROM MessageReadStatuses mrs
+                INNER JOIN ChatMessages cm ON cm.ItemId = mrs.ItemId
+                WHERE mrs.MessageId IS NULL
+            ");
+
+            // Drop new columns
+            try
+            {
+                migrationBuilder.DropColumn(name: "ItemId", table: "MessageReadStatuses");
+            }
+            catch { }
+            try
+            {
+                migrationBuilder.DropColumn(name: "ReadAt", table: "MessageReadStatuses");
+            }
+            catch { }
+
+            // Add PK on Id
+            migrationBuilder.AddPrimaryKey(
+                name: "PK_MessageReadStatuses",
+                table: "MessageReadStatuses",
+                column: "Id");
+        }
+    }
+}

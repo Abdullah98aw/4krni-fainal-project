@@ -1,0 +1,56 @@
+﻿using Microsoft.EntityFrameworkCore.Migrations;
+
+#nullable disable
+
+namespace Thakkirni.API.Migrations
+{
+    public partial class FixMessageReadStatuses : Migration
+    {
+        protected override void Up(MigrationBuilder migrationBuilder)
+        {
+            migrationBuilder.Sql(@"
+IF OBJECT_ID('MessageReadStatuses', 'U') IS NULL
+    THROW 50000, 'Table MessageReadStatuses does not exist', 1;
+
+-- Add ItemId if missing
+IF COL_LENGTH('MessageReadStatuses', 'ItemId') IS NULL
+    ALTER TABLE MessageReadStatuses ADD ItemId INT NULL;
+
+-- Migrate MessageId -> ItemId
+IF COL_LENGTH('MessageReadStatuses', 'MessageId') IS NOT NULL
+BEGIN
+    UPDATE mrs
+    SET ItemId = cm.ItemId
+    FROM MessageReadStatuses mrs
+    JOIN ChatMessages cm ON mrs.MessageId = cm.Id
+    WHERE mrs.ItemId IS NULL;
+END
+
+-- Add ReadAt if missing
+IF COL_LENGTH('MessageReadStatuses', 'ReadAt') IS NULL
+    ALTER TABLE MessageReadStatuses ADD ReadAt DATETIME2 NULL;
+
+-- Fill ReadAt
+UPDATE MessageReadStatuses
+SET ReadAt = GETUTCDATE()
+WHERE ReadAt IS NULL;
+
+-- Make ReadAt NOT NULL
+IF EXISTS (
+    SELECT 1 FROM sys.columns 
+    WHERE Name = 'ReadAt' 
+    AND is_nullable = 1 
+    AND Object_ID = Object_ID('MessageReadStatuses')
+)
+BEGIN
+    ALTER TABLE MessageReadStatuses
+    ALTER COLUMN ReadAt DATETIME2 NOT NULL;
+END
+");
+        }
+
+        protected override void Down(MigrationBuilder migrationBuilder)
+        {
+        }
+    }
+}

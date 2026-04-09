@@ -1,0 +1,11 @@
+using System;
+
+namespace Thakkirni.API.Models
+{
+    public class MessageReadStatus
+    {
+        public int ItemId { get; set; }
+        public int UserId { get; set; }
+        public DateTime ReadAt { get; set; }
+    }
+}

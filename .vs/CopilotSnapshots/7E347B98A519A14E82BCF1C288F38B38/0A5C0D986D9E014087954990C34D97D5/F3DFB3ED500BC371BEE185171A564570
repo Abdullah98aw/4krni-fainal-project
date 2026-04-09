@@ -1,0 +1,161 @@
+﻿using Microsoft.EntityFrameworkCore;
+using Thakkirni.API.Models;
+
+namespace Thakkirni.API.Data
+{
+    public class AppDbContext : DbContext
+    {
+        public AppDbContext(DbContextOptions<AppDbContext> options) : base(options) { }
+
+        public DbSet<Agency> Agencies { get; set; }
+        public DbSet<Department> Departments { get; set; }
+        public DbSet<Section> Sections { get; set; }
+        public DbSet<User> Users { get; set; }
+        public DbSet<Item> Items { get; set; }
+        public DbSet<ItemMember> ItemMembers { get; set; }
+        public DbSet<ItemAssignee> ItemAssignees { get; set; }
+        public DbSet<ChatMessage> ChatMessages { get; set; }
+        public DbSet<AuditEvent> AuditEvents { get; set; }
+        public DbSet<Notification> Notifications { get; set; }
+        public DbSet<MessageReadStatus> MessageReadStatuses { get; set; }
+        public DbSet<JobTitle> JobTitles { get; set; }
+
+        protected override void OnModelCreating(ModelBuilder modelBuilder)
+        {
+            base.OnModelCreating(modelBuilder);
+
+            // Agency → Department
+            modelBuilder.Entity<Department>()
+                .HasOne(d => d.Agency)
+                .WithMany(a => a.Departments)
+                .HasForeignKey(d => d.AgencyId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // Department → Section
+            modelBuilder.Entity<Section>()
+                .HasOne(s => s.Department)
+                .WithMany(d => d.Sections)
+                .HasForeignKey(s => s.DepartmentId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<JobTitle>()
+                .HasIndex(j => j.Name)
+                .IsUnique();
+
+            modelBuilder.Entity<Item>()
+                .HasIndex(i => i.ItemNumber)
+                .IsUnique();
+
+            modelBuilder.Entity<Item>()
+                .HasIndex(i => new { i.DepartmentId, i.UpdatedAt });
+
+            modelBuilder.Entity<Item>()
+                .HasIndex(i => new { i.CreatedById, i.DueDate });
+
+            modelBuilder.Entity<Notification>()
+                .HasIndex(n => new { n.UserId, n.IsRead, n.CreatedAt });
+
+            modelBuilder.Entity<ChatMessage>()
+                .HasIndex(m => new { m.ItemId, m.CreatedAt });
+
+            modelBuilder.Entity<MessageReadStatus>()
+                .HasIndex(r => new { r.MessageId, r.UserId })
+                .IsUnique();
+
+            modelBuilder.Entity<ItemMember>()
+                .HasIndex(im => new { im.ItemId, im.UserId })
+                .IsUnique();
+
+            modelBuilder.Entity<ItemAssignee>()
+                .HasIndex(ia => new { ia.ItemId, ia.UserId })
+                .IsUnique();
+
+            // Unique constraint on NationalId
+            modelBuilder.Entity<User>()
+                .HasIndex(u => u.NationalId)
+                .IsUnique();
+
+            // User → Agency (optional)
+            modelBuilder.Entity<User>()
+                .HasOne(u => u.Agency)
+                .WithMany()
+                .HasForeignKey(u => u.AgencyId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // User → Department (optional)
+            modelBuilder.Entity<User>()
+                .HasOne(u => u.Department)
+                .WithMany(d => d.Users)
+                .HasForeignKey(u => u.DepartmentId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // User → Section (optional)
+            modelBuilder.Entity<User>()
+                .HasOne(u => u.Section)
+                .WithMany(s => s.Users)
+                .HasForeignKey(u => u.SectionId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // Item relationships
+            modelBuilder.Entity<ItemMember>()
+                .HasOne(im => im.Item)
+                .WithMany(i => i.Members)
+                .HasForeignKey(im => im.ItemId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<ItemMember>()
+                .HasOne(im => im.User)
+                .WithMany(u => u.ItemMembers)
+                .HasForeignKey(im => im.UserId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<ItemAssignee>()
+                .HasOne(ia => ia.Item)
+                .WithMany(i => i.Assignees)
+                .HasForeignKey(ia => ia.ItemId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<ItemAssignee>()
+                .HasOne(ia => ia.User)
+                .WithMany(u => u.ItemAssignees)
+                .HasForeignKey(ia => ia.UserId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<Item>()
+                .HasOne(i => i.CreatedBy)
+                .WithMany()
+                .HasForeignKey(i => i.CreatedById)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<Item>()
+                .HasOne(i => i.Department)
+                .WithMany(d => d.Items)
+                .HasForeignKey(i => i.DepartmentId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<ChatMessage>()
+                .HasOne(cm => cm.Item)
+                .WithMany(i => i.Messages)
+                .HasForeignKey(cm => cm.ItemId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<ChatMessage>()
+                .HasOne(cm => cm.User)
+                .WithMany()
+                .HasForeignKey(cm => cm.UserId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<AuditEvent>()
+                .HasOne(ae => ae.Item)
+                .WithMany(i => i.AuditEvents)
+                .HasForeignKey(ae => ae.ItemId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<AuditEvent>()
+                .HasOne(ae => ae.User)
+                .WithMany()
+                .HasForeignKey(ae => ae.UserId)
+                .OnDelete(DeleteBehavior.Restrict);
+        }
+    }
+}

@@ -1,0 +1,66 @@
+﻿using System;
+using Microsoft.EntityFrameworkCore.Migrations;
+
+#nullable disable
+
+namespace Thakkirni.API.Migrations
+{
+    public partial class FixMessageReadStatuses : Migration
+    {
+        protected override void Up(MigrationBuilder migrationBuilder)
+        {
+            // Defensive, idempotent SQL to update existing MessageReadStatuses table
+            migrationBuilder.Sql(@"
+IF OBJECT_ID('dbo.MessageReadStatuses','U') IS NULL
+BEGIN
+    THROW 51000, 'MessageReadStatuses table does not exist; migration expected an existing table.', 1;
+END
+
+-- Add ItemId as NULLABLE if missing
+IF COL_LENGTH('dbo.MessageReadStatuses','ItemId') IS NULL
+BEGIN
+    ALTER TABLE dbo.MessageReadStatuses ADD ItemId int NULL;
+END
+
+-- If legacy MessageId exists, populate ItemId from ChatMessages mapping for rows where ItemId is NULL
+IF COL_LENGTH('dbo.MessageReadStatuses','MessageId') IS NOT NULL
+BEGIN
+    UPDATE mrs
+    SET mrs.ItemId = cm.ItemId
+    FROM dbo.MessageReadStatuses mrs
+    INNER JOIN dbo.ChatMessages cm ON mrs.MessageId = cm.Id
+    WHERE mrs.ItemId IS NULL AND mrs.MessageId IS NOT NULL;
+END
+
+-- Add ReadAt as NULLABLE if missing
+IF COL_LENGTH('dbo.MessageReadStatuses','ReadAt') IS NULL
+BEGIN
+    ALTER TABLE dbo.MessageReadStatuses ADD ReadAt datetime2 NULL;
+    -- Add a default constraint for future inserts if not exists
+    IF NOT EXISTS (SELECT 1 FROM sys.default_constraints dc JOIN sys.columns c ON dc.parent_object_id = c.object_id AND dc.parent_column_id = c.column_id WHERE OBJECT_NAME(dc.parent_object_id) = 'MessageReadStatuses' AND c.name = 'ReadAt')
+    BEGIN
+        ALTER TABLE dbo.MessageReadStatuses ADD CONSTRAINT DF_MessageReadStatuses_ReadAt DEFAULT (GETUTCDATE()) FOR ReadAt;
+    END
+END
+
+-- Populate ReadAt for existing rows if still NULL
+UPDATE dbo.MessageReadStatuses SET ReadAt = GETUTCDATE() WHERE ReadAt IS NULL;
+
+-- Make ReadAt NOT NULL if currently nullable
+IF COL_LENGTH('dbo.MessageReadStatuses','ReadAt') IS NOT NULL
+BEGIN
+    DECLARE @is_nullable INT = (SELECT columnproperty(object_id('dbo.MessageReadStatuses'), 'ReadAt', 'AllowsNull'));
+    IF @is_nullable = 1
+    BEGIN
+        ALTER TABLE dbo.MessageReadStatuses ALTER COLUMN ReadAt datetime2 NOT NULL;
+    END
+END
+");
+        }
+
+        protected override void Down(MigrationBuilder migrationBuilder)
+        {
+            // Intentionally empty: this migration modifies an existing table in-place and is not safely reversible by code.
+        }
+    }
+}

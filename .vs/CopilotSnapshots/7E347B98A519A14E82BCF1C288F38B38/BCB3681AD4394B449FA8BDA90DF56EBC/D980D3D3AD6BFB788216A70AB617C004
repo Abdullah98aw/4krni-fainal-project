@@ -1,0 +1,782 @@
+﻿using ClosedXML.Excel;
+using Microsoft.AspNetCore.Http;
+using Microsoft.EntityFrameworkCore;
+using Thakkirni.API.Application.Common.Exceptions;
+using Thakkirni.API.Application.Common.Models;
+using Thakkirni.API.Application.Interfaces;
+using Thakkirni.API.Application.Mappers;
+using Thakkirni.API.Data;
+using Thakkirni.API.DTOs;
+using Thakkirni.API.Models;
+
+namespace Thakkirni.API.Application.Services;
+
+public sealed class ItemService : IItemService
+{
+    private readonly AppDbContext _context;
+    private readonly IWebHostEnvironment _environment;
+    private readonly INotificationService _notificationService;
+    private readonly IAuditService _auditService;
+
+    public ItemService(AppDbContext context, IWebHostEnvironment environment, INotificationService notificationService, IAuditService auditService)
+    {
+        _context = context;
+        _environment = environment;
+        _notificationService = notificationService;
+        _auditService = auditService;
+    }
+
+    public async Task<IReadOnlyList<ItemDto>> GetItemsAsync(int currentUserId, string currentRole, int page, int pageSize, string? status, string? type, string? search, int? agencyId, int? departmentId, int? sectionId, CancellationToken cancellationToken = default)
+    {
+        var currentUser = await GetCurrentUserAsync(currentUserId, cancellationToken);
+
+        var now = DateTime.UtcNow;
+
+        page = page <= 0 ? 1 : page;
+        pageSize = pageSize <= 0 ? 20 : Math.Min(pageSize, 100);
+
+        var query = _context.Items.AsNoTracking().AsQueryable();
+
+        query = ApplyItemScope(query, currentUserId, currentRole, currentUser);
+
+        if (!string.IsNullOrWhiteSpace(type))
+            query = query.Where(i => i.Type == type);
+
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var normalizedSearch = search.Trim();
+            query = query.Where(i =>
+                EF.Functions.Like(i.Title, $"%{normalizedSearch}%") ||
+                EF.Functions.Like(i.ItemNumber, $"%{normalizedSearch}%"));
+        }
+
+        query = ApplyOrganizationFilters(query, currentRole, currentUser, agencyId, departmentId, sectionId);
+
+        if (!string.IsNullOrWhiteSpace(status))
+        {
+            var s = status.Trim().ToUpperInvariant();
+
+            if (s == "COMPLETED")
+                query = query.Where(i => i.CompletedDate != null);
+            else if (s == "OVERDUE")
+                query = query.Where(i => i.CompletedDate == null && i.DueDate < now);
+            else if (s == "ACTIVE")
+                query = query.Where(i => i.CompletedDate == null && i.DueDate >= now);
+        }
+
+        var paged = await query
+            .OrderByDescending(i => i.UpdatedAt)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .Select(i => new
+            {
+                i.Id,
+                i.ItemNumber,
+                i.Type,
+                i.Title,
+                i.Description,
+                i.Importance,
+                i.CommitteeType,
+                i.CompletedDate,
+                i.DueDate,
+                i.CreatedById,
+                CreatedByName = i.CreatedBy.Name,
+                i.DepartmentId,
+                DepartmentName = i.Department.Name,
+                AgencyId = i.Department.AgencyId,
+                AgencyName = i.Department.Agency.Name,
+                i.CreatedAt,
+                i.UpdatedAt
+            })
+            .ToListAsync(cancellationToken);
+
+        var itemIds = paged.Select(p => p.Id).ToList();
+
+        var memberMap = await _context.ItemMembers
+            .Where(im => itemIds.Contains(im.ItemId))
+            .GroupBy(im => im.ItemId)
+            .Select(g => new { ItemId = g.Key, UserIds = g.Select(x => x.UserId).ToList() })
+            .ToDictionaryAsync(g => g.ItemId, g => g.UserIds, cancellationToken);
+
+        var assigneeMap = await _context.ItemAssignees
+            .Where(ia => itemIds.Contains(ia.ItemId))
+            .GroupBy(ia => ia.ItemId)
+            .Select(g => new { ItemId = g.Key, UserIds = g.Select(x => x.UserId).ToList() })
+            .ToDictionaryAsync(g => g.ItemId, g => g.UserIds, cancellationToken);
+
+        var result = paged.Select(p => new ItemDto
+        {
+            Id = p.Id,
+            ItemNumber = p.ItemNumber ?? string.Empty,
+            Type = p.Type ?? string.Empty,
+            Title = p.Title ?? string.Empty,
+            Description = p.Description ?? string.Empty,
+            Importance = p.Importance ?? string.Empty,
+            CommitteeType = p.CommitteeType,
+            Status = p.CompletedDate.HasValue ? "COMPLETED" : (p.DueDate < DateTime.UtcNow ? "OVERDUE" : "ACTIVE"),
+            CompletedDate = p.CompletedDate,
+            DueDate = p.DueDate,
+            CreatedById = p.CreatedById,
+            CreatedByName = p.CreatedByName ?? string.Empty,
+            DepartmentId = p.DepartmentId,
+            DepartmentName = p.DepartmentName ?? string.Empty,
+            AgencyId = p.AgencyId,
+            AgencyName = p.AgencyName ?? string.Empty,
+            CreatedAt = p.CreatedAt,
+            UpdatedAt = p.UpdatedAt,
+            MemberIds = memberMap.ContainsKey(p.Id) ? memberMap[p.Id] : new List<int>(),
+            AssigneeIds = assigneeMap.ContainsKey(p.Id) ? assigneeMap[p.Id] : new List<int>(),
+            Members = new List<UserDto>(),
+            Assignees = new List<UserDto>(),
+            UnreadCount = 0,
+            HasUnreadUpdates = false
+        }).ToList();
+
+        return result;
+    }
+
+    public async Task<ItemDto> GetItemAsync(int id, int currentUserId, string currentRole, CancellationToken cancellationToken = default)
+    {
+        var currentUser = await GetCurrentUserAsync(currentUserId, cancellationToken);
+        var item = await GetItemAggregateAsync(id, cancellationToken);
+        EnsureCanAccess(item, currentUserId, currentRole, currentUser);
+
+        // Check if the current user has already marked the item as read (fast path)
+        var isRead = await _context.MessageReadStatuses
+            .AsNoTracking()
+            .AnyAsync(r => r.ItemId == id && r.UserId == currentUserId, cancellationToken);
+
+        // If already marked read, avoid scanning messages. Otherwise check if any unread messages exist.
+        var hasUnread = false;
+        if (!isRead)
+        {
+            hasUnread = await _context.ChatMessages
+                .AsNoTracking()
+                .Where(m => m.ItemId == id && m.UserId != currentUserId)
+                .AnyAsync(cancellationToken);
+        }
+
+        // Mapper expects an int unread count; we only know existence, so pass 1 when there are unread messages.
+        var unreadCount = hasUnread ? 1 : 0;
+
+        return ItemMapper.ToDto(item, unreadCount);
+    }
+
+    public async Task<ItemDto> CreateItemAsync(CreateItemDto dto, int currentUserId, CancellationToken cancellationToken = default)
+    {
+        var user = await _context.Users.AsNoTracking()
+            .Where(u => u.Id == currentUserId)
+            .Select(u => new User
+            {
+                Id = u.Id,
+                AgencyId = u.AgencyId,
+                DepartmentId = u.DepartmentId,
+                SectionId = u.SectionId,
+                Role = u.Role ?? "USER",
+                Name = u.Name ?? string.Empty,
+                Email = u.Email ?? string.Empty
+            })
+            .FirstOrDefaultAsync(cancellationToken);
+
+        if (user?.DepartmentId == null)
+            throw new ApiException(StatusCodes.Status400BadRequest, "المستخدم لا ينتمي إلى إدارة.", new { errors = new[] { "المستخدم لا ينتمي إلى إدارة." } });
+
+        ValidateCreateUpdateDto(dto);
+
+        var participants = await ResolveParticipantsAsync(dto.MemberIds, dto.MemberNationalIds, dto.AssigneeIds, dto.AssigneeNationalIds, user.DepartmentId.Value, currentUserId, dto.Type == "COMMITTEE", cancellationToken);
+
+        // Create item without explicit transaction/audit/notifications per scope
+        var item = new Item
+        {
+            ItemNumber = $"{(dto.Type == "TASK" ? "T" : "C")}-{DateTime.UtcNow:yyyyMMddHHmmssfff}",
+            Type = dto.Type,
+            Title = dto.Title.Trim(),
+            Description = dto.Description?.Trim() ?? string.Empty,
+            Importance = dto.Importance,
+            CommitteeType = dto.Type == "COMMITTEE" ? dto.CommitteeType : null,
+            CompletedDate = null,
+            DueDate = dto.DueDate,
+            CreatedById = currentUserId,
+            DepartmentId = user.DepartmentId.Value,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow,
+            Members = participants.MemberIds.Select(id => new ItemMember { UserId = id }).ToList(),
+            Assignees = participants.AssigneeIds.Select(id => new ItemAssignee { UserId = id }).ToList()
+        };
+
+        _context.Items.Add(item);
+        await _context.SaveChangesAsync(cancellationToken);
+
+        var created = await GetItemAggregateReadOnlyAsync(item.Id, cancellationToken);
+        return ItemMapper.ToDto(created);
+    }
+
+    public async Task<ItemDto> UpdateItemAsync(int id, CreateItemDto dto, int currentUserId, string currentRole, CancellationToken cancellationToken = default)
+    {
+        var currentUser = await GetCurrentUserAsync(currentUserId, cancellationToken);
+        var item = await GetItemAggregateAsync(id, cancellationToken);
+        EnsureCanManage(item, currentUserId, currentRole, currentUser);
+        ValidateCreateUpdateDto(dto);
+
+        var participants = await ResolveParticipantsAsync(dto.MemberIds, dto.MemberNationalIds, dto.AssigneeIds, dto.AssigneeNationalIds, item.DepartmentId, item.CreatedById, dto.Type == "COMMITTEE", cancellationToken);
+        var auditMessages = new List<string>();
+
+        await using var tx = await _context.Database.BeginTransactionAsync(cancellationToken);
+
+        if (!string.Equals(item.Title, dto.Title?.Trim(), StringComparison.Ordinal))
+        {
+            auditMessages.Add($"تم تحديث العنوان من \"{item.Title}\" إلى \"{dto.Title?.Trim()}\"");
+            item.Title = dto.Title?.Trim() ?? item.Title;
+        }
+
+        var newDescription = dto.Description?.Trim() ?? string.Empty;
+        if (!string.Equals(item.Description, newDescription, StringComparison.Ordinal))
+        {
+            auditMessages.Add("تم تحديث الوصف");
+            item.Description = newDescription;
+        }
+
+        if (!string.Equals(item.Importance, dto.Importance, StringComparison.Ordinal))
+        {
+            auditMessages.Add($"تم تحديث الأهمية إلى {dto.Importance}");
+            item.Importance = dto.Importance;
+        }
+
+        if (!string.Equals(item.Type, dto.Type, StringComparison.Ordinal))
+        {
+            auditMessages.Add($"تم تغيير النوع إلى {(dto.Type == "TASK" ? "مهمة" : "لجنة")}");
+            item.Type = dto.Type;
+        }
+
+        var nextCommitteeType = dto.Type == "COMMITTEE" ? dto.CommitteeType : null;
+        if (!string.Equals(item.CommitteeType, nextCommitteeType, StringComparison.Ordinal))
+        {
+            auditMessages.Add("تم تحديث نوع اللجنة");
+            item.CommitteeType = nextCommitteeType;
+        }
+
+        if (item.DueDate != dto.DueDate)
+        {
+            auditMessages.Add($"تم تغيير تاريخ الاستحقاق من {item.DueDate:yyyy-MM-dd} إلى {dto.DueDate:yyyy-MM-dd}");
+            item.DueDate = dto.DueDate;
+        }
+
+        var normalizedMemberIds = participants.MemberIds;
+        var currentMemberIds = item.Members.Select(m => m.UserId).ToHashSet();
+        var membersToAdd = normalizedMemberIds.Where(x => !currentMemberIds.Contains(x)).ToList();
+        var membersToRemove = item.Members.Where(m => !normalizedMemberIds.Contains(m.UserId) && m.UserId != item.CreatedById).ToList();
+
+        foreach (var memberId in membersToAdd)
+        {
+            _context.ItemMembers.Add(new ItemMember { ItemId = item.Id, UserId = memberId });
+            auditMessages.Add($"تمت إضافة العضو: {await GetUserNameAsync(memberId, cancellationToken)}");
+        }
+
+        foreach (var membership in membersToRemove)
+        {
+            _context.ItemMembers.Remove(membership);
+            auditMessages.Add($"تمت إزالة العضو: {await GetUserNameAsync(membership.UserId, cancellationToken)}");
+        }
+
+        var normalizedAssigneeIds = participants.AssigneeIds;
+        var currentAssigneeIds = item.Assignees.Select(a => a.UserId).ToHashSet();
+        var assigneesToAdd = normalizedAssigneeIds.Where(x => !currentAssigneeIds.Contains(x)).ToList();
+        var assigneesToRemove = item.Assignees.Where(a => !normalizedAssigneeIds.Contains(a.UserId)).ToList();
+
+        foreach (var assignee in assigneesToRemove)
+        {
+            _context.ItemAssignees.Remove(assignee);
+            auditMessages.Add($"تمت إزالة التكليف عن: {await GetUserNameAsync(assignee.UserId, cancellationToken)}");
+        }
+
+        foreach (var assigneeId in assigneesToAdd)
+        {
+            _context.ItemAssignees.Add(new ItemAssignee { ItemId = item.Id, UserId = assigneeId });
+            auditMessages.Add($"تم تكليف: {await GetUserNameAsync(assigneeId, cancellationToken)}");
+        }
+
+        item.UpdatedAt = DateTime.UtcNow;
+        if (auditMessages.Count == 0)
+            auditMessages.Add("تم فتح التعديل بدون تغييرات مؤثرة");
+
+        foreach (var message in auditMessages)
+            await _auditService.LogItemEventAsync(item.Id, currentUserId, "UPDATE", message, cancellationToken);
+
+        await _context.SaveChangesAsync(cancellationToken);
+        await tx.CommitAsync(cancellationToken);
+
+        var updated = await GetItemAggregateReadOnlyAsync(item.Id, cancellationToken);
+        return ItemMapper.ToDto(updated);
+    }
+
+    public async Task<ItemDto> CompleteItemAsync(int id, int currentUserId, string currentRole, CancellationToken cancellationToken = default)
+    {
+        var currentUser = await GetCurrentUserAsync(currentUserId, cancellationToken);
+        var item = await GetItemAggregateAsync(id, cancellationToken);
+        EnsureCanManage(item, currentUserId, currentRole, currentUser);
+
+        item.CompletedDate = DateTime.UtcNow;
+        item.UpdatedAt = DateTime.UtcNow;
+        await _auditService.LogItemEventAsync(item.Id, currentUserId, "COMPLETE", $"تم إكمال {item.Title}", cancellationToken);
+        await _context.SaveChangesAsync(cancellationToken);
+
+        foreach (var recipientId in GetParticipantIds(item).Where(x => x != currentUserId))
+            await CreateNotificationAsync(recipientId, "تم إكمال المهمة", $"تم إكمال: {item.Title}", cancellationToken);
+
+        return ItemMapper.ToDto(item);
+    }
+
+    public async Task<ExportFileResult> ExportItemsAsync(int currentUserId, string currentRole, string? status, string? type, string? search, int? agencyId, int? departmentId, int? sectionId, CancellationToken cancellationToken = default)
+    {
+        var items = await GetExportSourceAsync(currentUserId, currentRole, status, type, search, agencyId, departmentId, sectionId, cancellationToken);
+
+        using var workbook = new XLWorkbook();
+        var sheet = workbook.Worksheets.Add("Items");
+        var headers = new[] { "الرقم", "النوع", "العنوان", "الوصف", "الحالة", "الأهمية", "نوع اللجنة", "الإدارة", "المنشئ", "الأعضاء", "المكلفون", "تاريخ الاستحقاق", "تاريخ الإنشاء", "آخر تحديث" };
+        for (var i = 0; i < headers.Length; i++)
+        {
+            sheet.Cell(1, i + 1).Value = headers[i];
+            sheet.Cell(1, i + 1).Style.Font.Bold = true;
+        }
+
+        for (var row = 0; row < items.Count; row++)
+        {
+            var item = items[row];
+            var excelRow = row + 2;
+            sheet.Cell(excelRow, 1).Value = item.ItemNumber;
+            sheet.Cell(excelRow, 2).Value = item.Type == "TASK" ? "مهمة" : "لجنة";
+            sheet.Cell(excelRow, 3).Value = item.Title;
+            sheet.Cell(excelRow, 4).Value = item.Description;
+            sheet.Cell(excelRow, 5).Value = item.ComputedStatus;
+            sheet.Cell(excelRow, 6).Value = item.Importance == "SECRET" ? "سري" : "عادي";
+            sheet.Cell(excelRow, 7).Value = item.CommitteeType ?? string.Empty;
+            sheet.Cell(excelRow, 8).Value = item.Department?.Name ?? string.Empty;
+            sheet.Cell(excelRow, 9).Value = item.CreatedBy?.Name ?? string.Empty;
+            sheet.Cell(excelRow, 10).Value = string.Join("، ", item.Members.Select(m => m.User?.Name).Where(n => !string.IsNullOrWhiteSpace(n)));
+            sheet.Cell(excelRow, 11).Value = string.Join("، ", item.Assignees.Select(a => a.User?.Name).Where(n => !string.IsNullOrWhiteSpace(n)));
+            sheet.Cell(excelRow, 12).Value = item.DueDate.ToString("yyyy-MM-dd");
+            sheet.Cell(excelRow, 13).Value = item.CreatedAt.ToString("yyyy-MM-dd HH:mm");
+            sheet.Cell(excelRow, 14).Value = item.UpdatedAt.ToString("yyyy-MM-dd HH:mm");
+        }
+        sheet.Columns().AdjustToContents();
+
+        using var stream = new MemoryStream();
+        workbook.SaveAs(stream);
+        return new ExportFileResult
+        {
+            Content = stream.ToArray(),
+            ContentType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            FileName = $"items-{DateTime.UtcNow:yyyyMMddHHmmss}.xlsx"
+        };
+    }
+
+    public async Task<IReadOnlyList<ItemAuditDto>> GetAuditLogAsync(int id, int currentUserId, string currentRole, CancellationToken cancellationToken = default)
+    {
+        var currentUser = await GetCurrentUserAsync(currentUserId, cancellationToken);
+        var item = await _context.Items.Include(i => i.Members).Include(i => i.Assignees).FirstOrDefaultAsync(i => i.Id == id, cancellationToken) ?? throw NotFound();
+        EnsureCanAccess(item, currentUserId, currentRole, currentUser);
+
+        return await _context.AuditEvents
+            .Where(a => a.ItemId == id)
+            .OrderByDescending(a => a.CreatedAt)
+            .Select(a => new ItemAuditDto
+            {
+                Id = a.Id,
+                ActionType = a.Type,
+                UserId = a.UserId,
+                UserName = a.User.Name,
+                Description = a.MetaData,
+                Timestamp = a.CreatedAt
+            })
+            .ToListAsync(cancellationToken);
+    }
+
+    public async Task<IReadOnlyList<ChatMessageDto>> GetMessagesAsync(int id, int currentUserId, string currentRole, CancellationToken cancellationToken = default)
+    {
+        var currentUser = await GetCurrentUserAsync(currentUserId, cancellationToken);
+        var item = await _context.Items.Include(i => i.Members).Include(i => i.Assignees).FirstOrDefaultAsync(i => i.Id == id, cancellationToken) ?? throw NotFound();
+        EnsureCanAccess(item, currentUserId, currentRole, currentUser);
+
+        return await _context.ChatMessages
+            .AsNoTracking()
+            .Where(m => m.ItemId == id)
+            .OrderBy(m => m.CreatedAt)
+            .Select(m => new ChatMessageDto
+            {
+                Id = m.Id,
+                ItemId = m.ItemId,
+                UserId = m.UserId,
+                Text = m.Text,
+                AttachmentFileName = m.PdfAttachmentFileName,
+                HasAttachment = !string.IsNullOrWhiteSpace(m.PdfAttachmentPath),
+                CreatedAt = m.CreatedAt,
+                UserName = m.User.Name
+            })
+            .ToListAsync(cancellationToken);
+    }
+
+    public async Task<ChatMessageDto> SendMessageAsync(int id, SendMessageDto dto, int currentUserId, string currentRole, CancellationToken cancellationToken = default)
+    {
+        var currentUser = await GetCurrentUserAsync(currentUserId, cancellationToken);
+        var item = await _context.Items.Include(i => i.Members).Include(i => i.Assignees).FirstOrDefaultAsync(i => i.Id == id, cancellationToken) ?? throw NotFound();
+        EnsureCanAccess(item, currentUserId, currentRole, currentUser);
+
+        if (string.IsNullOrWhiteSpace(dto.Text) && dto.Attachment == null)
+            throw new ApiException(StatusCodes.Status400BadRequest, "بيانات غير صالحة", new { message = "يجب إدخال نص أو إرفاق ملف" });
+
+        string? savedFileName = null;
+        string? savedRelativePath = null;
+        if (dto.Attachment != null)
+        {
+            var uploadsRoot = Path.Combine(_environment.WebRootPath ?? Path.Combine(_environment.ContentRootPath, "wwwroot"), "uploads", "chat");
+            Directory.CreateDirectory(uploadsRoot);
+            savedFileName = $"{Guid.NewGuid()}{Path.GetExtension(dto.Attachment.FileName)}";
+            var physicalPath = Path.Combine(uploadsRoot, savedFileName);
+            await using var stream = File.Create(physicalPath);
+            await dto.Attachment.CopyToAsync(stream, cancellationToken);
+            savedRelativePath = Path.Combine("uploads", "chat", savedFileName).Replace("\\", "/");
+        }
+
+        await using var tx = await _context.Database.BeginTransactionAsync(cancellationToken);
+
+        var message = new ChatMessage
+        {
+            ItemId = id,
+            UserId = currentUserId,
+            Text = dto.Text?.Trim() ?? string.Empty,
+            PdfAttachmentFileName = dto.Attachment?.FileName ?? string.Empty,
+            PdfAttachmentPath = savedRelativePath ?? string.Empty,
+            CreatedAt = DateTime.UtcNow
+        };
+
+        _context.ChatMessages.Add(message);
+        await _context.SaveChangesAsync(cancellationToken);
+        await _auditService.LogItemEventAsync(item.Id, currentUserId, "CHAT", dto.Attachment != null ? $"تمت إضافة رسالة مع مرفق: {dto.Attachment.FileName}" : "تمت إضافة رسالة جديدة", cancellationToken);
+        await _context.SaveChangesAsync(cancellationToken);
+
+        foreach (var recipientId in GetParticipantIds(item).Where(x => x != currentUserId))
+            await CreateNotificationAsync(recipientId, "تحديث جديد", $"هناك رسالة جديدة في {item.Title}", cancellationToken);
+
+        await tx.CommitAsync(cancellationToken);
+
+        return new ChatMessageDto
+        {
+            Id = message.Id,
+            ItemId = message.ItemId,
+            UserId = message.UserId,
+            Text = message.Text,
+            AttachmentFileName = message.PdfAttachmentFileName,
+            HasAttachment = !string.IsNullOrWhiteSpace(message.PdfAttachmentPath),
+            CreatedAt = message.CreatedAt,
+            UserName = await GetUserNameAsync(currentUserId, cancellationToken)
+        };
+    }
+
+    public async Task<(string PhysicalPath, string DownloadName)> GetAttachmentAsync(int messageId, int currentUserId, string currentRole, CancellationToken cancellationToken = default)
+    {
+        var message = await _context.ChatMessages
+            .AsNoTracking()
+            .Include(m => m.Item).ThenInclude(i => i.Department)
+            .Include(m => m.Item).ThenInclude(i => i.CreatedBy)
+            .Include(m => m.Item).ThenInclude(i => i.Members).ThenInclude(im => im.User)
+            .Include(m => m.Item).ThenInclude(i => i.Assignees).ThenInclude(ia => ia.User)
+            .FirstOrDefaultAsync(m => m.Id == messageId, cancellationToken);
+
+        if (message == null || string.IsNullOrWhiteSpace(message.PdfAttachmentPath))
+            throw new ApiException(StatusCodes.Status404NotFound, "المرفق غير موجود", null);
+
+        var currentUser = await GetCurrentUserAsync(currentUserId, cancellationToken);
+        EnsureCanAccess(message.Item, currentUserId, currentRole, currentUser);
+
+        var physicalPath = Path.Combine(_environment.WebRootPath ?? Path.Combine(_environment.ContentRootPath, "wwwroot"), message.PdfAttachmentPath.Replace("/", Path.DirectorySeparatorChar.ToString()));
+        if (!File.Exists(physicalPath))
+            throw new ApiException(StatusCodes.Status404NotFound, "الملف غير موجود", null);
+
+        return (physicalPath, message.PdfAttachmentFileName);
+    }
+
+    public async Task MarkMessagesReadAsync(int id, int currentUserId, string currentRole, CancellationToken cancellationToken = default)
+    {
+        var currentUser = await GetCurrentUserAsync(currentUserId, cancellationToken);
+        var item = await GetItemAggregateAsync(id, cancellationToken);
+        EnsureCanAccess(item, currentUserId, currentRole, currentUser);
+
+        var alreadyMarked = await _context.MessageReadStatuses.AnyAsync(r => r.ItemId == id && r.UserId == currentUserId, cancellationToken);
+        if (!alreadyMarked)
+        {
+            _context.MessageReadStatuses.Add(new MessageReadStatus { ItemId = id, UserId = currentUserId });
+            await _context.SaveChangesAsync(cancellationToken);
+        }
+    }
+
+    public async Task<ItemDto> AddMemberAsync(int id, MemberActionDto dto, int currentUserId, string currentRole, CancellationToken cancellationToken = default)
+    {
+        var currentUser = await GetCurrentUserAsync(currentUserId, cancellationToken);
+        var item = await GetItemAggregateAsync(id, cancellationToken);
+        EnsureCanManage(item, currentUserId, currentRole, currentUser);
+
+        var targetUser = await _context.Users.FindAsync(new object[] { dto.UserId }, cancellationToken);
+        if (targetUser == null)
+            throw new ApiException(StatusCodes.Status404NotFound, "المستخدم غير موجود", new { message = "المستخدم غير موجود" });
+        if (targetUser.DepartmentId != item.DepartmentId)
+            throw new ApiException(StatusCodes.Status400BadRequest, "بيانات غير صالحة", new { message = "لا يمكن إضافة مستخدم من إدارة مختلفة" });
+        if (item.Members.Any(m => m.UserId == dto.UserId))
+            throw new ApiException(StatusCodes.Status409Conflict, "المستخدم عضو بالفعل", new { message = "المستخدم عضو بالفعل" });
+
+        _context.ItemMembers.Add(new ItemMember { ItemId = id, UserId = dto.UserId });
+        await _auditService.LogItemEventAsync(id, currentUserId, "ADD_MEMBER", $"تمت إضافة العضو: {targetUser.Name}", cancellationToken);
+        item.UpdatedAt = DateTime.UtcNow;
+        await _context.SaveChangesAsync(cancellationToken);
+        await CreateNotificationAsync(dto.UserId, "تمت إضافتك إلى عنصر", $"تمت إضافتك إلى {item.Title}", cancellationToken);
+
+        var updated = await GetItemAggregateReadOnlyAsync(id, cancellationToken);
+        return ItemMapper.ToDto(updated);
+    }
+
+    public async Task<ItemDto> RemoveMemberAsync(int id, int userId, int currentUserId, string currentRole, CancellationToken cancellationToken = default)
+    {
+        var currentUser = await GetCurrentUserAsync(currentUserId, cancellationToken);
+        var item = await GetItemAggregateAsync(id, cancellationToken);
+        EnsureCanManage(item, currentUserId, currentRole, currentUser);
+        if (item.CreatedById == userId)
+            throw new ApiException(StatusCodes.Status400BadRequest, "عملية غير مسموحة", new { message = "لا يمكن إزالة منشئ المهمة" });
+
+        var membership = item.Members.FirstOrDefault(m => m.UserId == userId);
+        if (membership == null)
+            throw new ApiException(StatusCodes.Status404NotFound, "المستخدم ليس عضواً", new { message = "المستخدم ليس عضواً" });
+
+        _context.ItemMembers.Remove(membership);
+        await _auditService.LogItemEventAsync(id, currentUserId, "REMOVE_MEMBER", $"تمت إزالة العضو: {await GetUserNameAsync(userId, cancellationToken)}", cancellationToken);
+        item.UpdatedAt = DateTime.UtcNow;
+        await _context.SaveChangesAsync(cancellationToken);
+
+        var updated = await GetItemAggregateReadOnlyAsync(id, cancellationToken);
+        return ItemMapper.ToDto(updated);
+    }
+
+    private async Task<List<Item>> GetExportSourceAsync(int currentUserId, string currentRole, string? status, string? type, string? search, int? agencyId, int? departmentId, int? sectionId, CancellationToken cancellationToken)
+    {
+        var currentUser = await GetCurrentUserAsync(currentUserId, cancellationToken);
+        var query = _context.Items
+            .AsNoTracking()
+            .AsSplitQuery()
+            .Include(i => i.Department)
+                .ThenInclude(d => d.Agency)
+            .Include(i => i.CreatedBy)
+            .Include(i => i.Members).ThenInclude(m => m.User)
+            .Include(i => i.Assignees).ThenInclude(a => a.User)
+            .AsQueryable();
+
+        query = ApplyItemScope(query, currentUserId, currentRole, currentUser);
+        if (!string.IsNullOrWhiteSpace(type)) query = query.Where(i => i.Type == type);
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var normalizedSearch = search.Trim();
+            query = query.Where(i => i.Title.Contains(normalizedSearch) || i.ItemNumber.Contains(normalizedSearch));
+        }
+        query = ApplyOrganizationFilters(query, currentRole, currentUser, agencyId, departmentId, sectionId);
+        var items = await query.OrderByDescending(i => i.UpdatedAt).ToListAsync(cancellationToken);
+        if (!string.IsNullOrWhiteSpace(status))
+            items = items.Where(i => string.Equals(i.ComputedStatus, status, StringComparison.OrdinalIgnoreCase)).ToList();
+        return items;
+    }
+
+    private async Task<User?> GetCurrentUserAsync(int userId, CancellationToken cancellationToken)
+        => await _context.Users.Include(u => u.Department).AsNoTracking().FirstOrDefaultAsync(u => u.Id == userId, cancellationToken);
+
+    private async Task<Item> GetItemAggregateAsync(int id, CancellationToken cancellationToken)
+        => await _context.Items
+            .AsSplitQuery()
+            .Include(i => i.Department)
+                .ThenInclude(d => d.Agency)
+            .Include(i => i.CreatedBy)
+                .ThenInclude(u => u.Department)
+            .Include(i => i.CreatedBy)
+                .ThenInclude(u => u.Section)
+            .Include(i => i.Members).ThenInclude(m => m.User).ThenInclude(u => u!.Agency)
+            .Include(i => i.Members).ThenInclude(m => m.User).ThenInclude(u => u!.Department)
+            .Include(i => i.Members).ThenInclude(m => m.User).ThenInclude(u => u!.Section)
+            .Include(i => i.Assignees).ThenInclude(a => a.User).ThenInclude(u => u!.Agency)
+            .Include(i => i.Assignees).ThenInclude(a => a.User).ThenInclude(u => u!.Department)
+            .Include(i => i.Assignees).ThenInclude(a => a.User).ThenInclude(u => u!.Section)
+            .FirstOrDefaultAsync(i => i.Id == id, cancellationToken) ?? throw NotFound();
+
+    private async Task<Item> GetItemAggregateReadOnlyAsync(int id, CancellationToken cancellationToken)
+        => await _context.Items
+            .AsNoTracking()
+            .AsSplitQuery()
+            .Include(i => i.Department)
+                .ThenInclude(d => d.Agency)
+            .Include(i => i.CreatedBy)
+                .ThenInclude(u => u.Department)
+            .Include(i => i.CreatedBy)
+                .ThenInclude(u => u.Section)
+            .Include(i => i.Members).ThenInclude(m => m.User).ThenInclude(u => u!.Agency)
+            .Include(i => i.Members).ThenInclude(m => m.User).ThenInclude(u => u!.Department)
+            .Include(i => i.Members).ThenInclude(m => m.User).ThenInclude(u => u!.Section)
+            .Include(i => i.Assignees).ThenInclude(a => a.User).ThenInclude(u => u!.Agency)
+            .Include(i => i.Assignees).ThenInclude(a => a.User).ThenInclude(u => u!.Department)
+            .Include(i => i.Assignees).ThenInclude(a => a.User).ThenInclude(u => u!.Section)
+            .FirstOrDefaultAsync(i => i.Id == id, cancellationToken) ?? throw NotFound();
+
+    private IQueryable<Item> ApplyItemScope(IQueryable<Item> query, int currentUserId, string currentUserRole, User? currentUser)
+    {
+        if (currentUserRole == "USER")
+        {
+            return query.Where(i => i.CreatedById == currentUserId || i.Members.Any(m => m.UserId == currentUserId) || i.Assignees.Any(a => a.UserId == currentUserId));
+        }
+
+        if (currentUserRole == "ADMIN")
+        {
+            return query.Where(i => i.Importance == "SECRET"
+                ? i.CreatedById == currentUserId || i.Members.Any(m => m.UserId == currentUserId) || i.Assignees.Any(a => a.UserId == currentUserId)
+                : true);
+        }
+
+        if (currentUserRole == "MANAGER")
+        {
+            return query.Where(i => i.Importance == "SECRET"
+                ? i.CreatedById == currentUserId || i.Members.Any(m => m.UserId == currentUserId) || i.Assignees.Any(a => a.UserId == currentUserId)
+                : IsItemInManagerScope(i, currentUserId, currentUser));
+        }
+
+        return query.Where(i => i.CreatedById == currentUserId || i.Members.Any(m => m.UserId == currentUserId) || i.Assignees.Any(a => a.UserId == currentUserId));
+    }
+
+    private IQueryable<Item> ApplyOrganizationFilters(IQueryable<Item> query, string currentUserRole, User? currentUser, int? agencyId, int? departmentId, int? sectionId)
+    {
+        if (agencyId.HasValue) query = query.Where(i => i.Department.AgencyId == agencyId.Value);
+        if (departmentId.HasValue) query = query.Where(i => i.DepartmentId == departmentId.Value);
+        if (sectionId.HasValue)
+            query = query.Where(i => i.CreatedBy.SectionId == sectionId.Value || i.Members.Any(m => m.User.SectionId == sectionId.Value) || i.Assignees.Any(a => a.User.SectionId == sectionId.Value));
+
+        if (currentUserRole == "MANAGER" && currentUser != null)
+        {
+            if (currentUser.SectionId.HasValue)
+                query = query.Where(i => i.CreatedBy.SectionId == currentUser.SectionId.Value || i.Members.Any(m => m.User.SectionId == currentUser.SectionId.Value) || i.Assignees.Any(a => a.User.SectionId == currentUser.SectionId.Value));
+            else if (currentUser.DepartmentId.HasValue)
+                query = query.Where(i => i.DepartmentId == currentUser.DepartmentId.Value);
+            else if (currentUser.AgencyId.HasValue)
+                query = query.Where(i => i.Department.AgencyId == currentUser.AgencyId.Value);
+        }
+        return query;
+    }
+
+    private static bool IsItemInManagerScope(Item item, int currentUserId, User? currentUser)
+    {
+        if (currentUser == null) return false;
+        if (currentUser.SectionId.HasValue)
+        {
+            return item.CreatedById == currentUserId
+                || item.CreatedBy?.SectionId == currentUser.SectionId.Value
+                || item.Members.Any(m => m.User?.SectionId == currentUser.SectionId.Value)
+                || item.Assignees.Any(a => a.User?.SectionId == currentUser.SectionId.Value);
+        }
+        if (currentUser.DepartmentId.HasValue) return item.DepartmentId == currentUser.DepartmentId.Value;
+        if (currentUser.AgencyId.HasValue) return item.Department?.AgencyId == currentUser.AgencyId.Value;
+        return false;
+    }
+
+    private void EnsureCanAccess(Item item, int currentUserId, string currentUserRole, User? currentUser)
+    {
+        var isParticipant = item.CreatedById == currentUserId || item.Members.Any(m => m.UserId == currentUserId) || item.Assignees.Any(a => a.UserId == currentUserId);
+        var allowed = string.Equals(item.Importance, "SECRET", StringComparison.OrdinalIgnoreCase)
+            ? isParticipant
+            : currentUserRole == "ADMIN" || (currentUserRole == "MANAGER" ? IsItemInManagerScope(item, currentUserId, currentUser) : isParticipant);
+        if (!allowed)
+            throw new ApiException(StatusCodes.Status403Forbidden, "غير مصرح", null);
+    }
+
+    private void EnsureCanManage(Item item, int currentUserId, string currentUserRole, User? currentUser)
+    {
+        var allowed = string.Equals(item.Importance, "SECRET", StringComparison.OrdinalIgnoreCase)
+            ? item.CreatedById == currentUserId
+            : currentUserRole == "ADMIN" || (currentUserRole == "MANAGER" ? IsItemInManagerScope(item, currentUserId, currentUser) : item.CreatedById == currentUserId);
+        if (!allowed)
+            throw new ApiException(StatusCodes.Status403Forbidden, "غير مصرح", null);
+    }
+
+    private static void ValidateCreateUpdateDto(CreateItemDto? dto)
+    {
+        if (dto == null)
+            throw new ApiException(StatusCodes.Status400BadRequest, "بيانات غير صالحة", new { errors = new[] { "بيانات العنصر غير صحيحة" } });
+        if (dto.Type != "TASK" && dto.Type != "COMMITTEE")
+            throw new ApiException(StatusCodes.Status400BadRequest, "بيانات غير صالحة", new { errors = new[] { "نوع العنصر غير صالح" } });
+        if (string.IsNullOrWhiteSpace(dto.Title))
+            throw new ApiException(StatusCodes.Status400BadRequest, "بيانات غير صالحة", new { errors = new[] { "عنوان العنصر مطلوب" } });
+        if (dto.Importance != "NORMAL" && dto.Importance != "SECRET")
+            throw new ApiException(StatusCodes.Status400BadRequest, "بيانات غير صالحة", new { errors = new[] { "قيمة السرية غير صحيحة" } });
+        if (dto.DueDate == default)
+            throw new ApiException(StatusCodes.Status400BadRequest, "بيانات غير صالحة", new { errors = new[] { "تاريخ الاستحقاق مطلوب" } });
+        if (dto.Type == "COMMITTEE" && dto.CommitteeType != "INTERNAL" && dto.CommitteeType != "EXTERNAL")
+            throw new ApiException(StatusCodes.Status400BadRequest, "بيانات غير صالحة", new { errors = new[] { "نوع اللجنة غير صالح" } });
+    }
+
+    private async Task<(List<int> MemberIds, List<int> AssigneeIds)> ResolveParticipantsAsync(IEnumerable<int>? memberIds, IEnumerable<string>? memberNationalIds, IEnumerable<int>? assigneeIds, IEnumerable<string>? assigneeNationalIds, int departmentId, int requiredCreatorId, bool requireCommitteeMember, CancellationToken cancellationToken)
+    {
+        var memberResult = await ResolveUserIdsAsync(memberIds, memberNationalIds, departmentId, "الأعضاء", cancellationToken);
+        var assigneeResult = await ResolveUserIdsAsync(assigneeIds, assigneeNationalIds, departmentId, "المكلّفين", cancellationToken);
+        var finalMembers = NormalizeUserIds(memberResult, requiredCreatorId);
+        var finalAssignees = NormalizeUserIds(assigneeResult);
+        if (requireCommitteeMember && memberResult.Count == 0)
+            throw new ApiException(StatusCodes.Status400BadRequest, "بيانات غير صالحة", new { errors = new[] { "يجب تحديد عضو واحد على الأقل للجنة" } });
+        return (finalMembers, finalAssignees);
+    }
+
+    private async Task<List<int>> ResolveUserIdsAsync(IEnumerable<int>? directIds, IEnumerable<string>? nationalIds, int departmentId, string label, CancellationToken cancellationToken)
+    {
+        var normalizedIds = NormalizeUserIds(directIds);
+        var normalizedNationalIds = (nationalIds ?? Enumerable.Empty<string>())
+            .Select(id => id?.Trim())
+            .Where(id => !string.IsNullOrWhiteSpace(id))
+            .Distinct()
+            .ToList()!;
+
+        foreach (var nationalId in normalizedNationalIds)
+            if (!System.Text.RegularExpressions.Regex.IsMatch(nationalId!, @"^\d{10}$"))
+                throw new ApiException(StatusCodes.Status400BadRequest, "بيانات غير صالحة", new { errors = new[] { $"كل {label} المضافين عبر الهوية يجب أن تكون هوياتهم 10 أرقام" } });
+
+        if (normalizedNationalIds.Count > 0)
+        {
+            var usersByNationalId = await _context.Users
+                .Where(u => normalizedNationalIds.Contains(u.NationalId))
+                .Select(u => new { u.Id, u.NationalId, u.DepartmentId })
+                .ToListAsync(cancellationToken);
+
+            var missingNationalIds = normalizedNationalIds.Except(usersByNationalId.Select(u => u.NationalId)).ToList();
+            if (missingNationalIds.Count > 0)
+                throw new ApiException(StatusCodes.Status400BadRequest, "بيانات غير صالحة", new { errors = new[] { $"بعض أرقام الهوية غير مسجلة في النظام: {string.Join("، ", missingNationalIds)}" } });
+            normalizedIds.AddRange(usersByNationalId.Select(u => u.Id));
+        }
+
+        normalizedIds = normalizedIds.Distinct().ToList();
+        if (normalizedIds.Count == 0) return normalizedIds;
+
+        var users = await _context.Users.Where(u => normalizedIds.Contains(u.Id)).Select(u => new { u.Id, u.DepartmentId }).ToListAsync(cancellationToken);
+        var missingIds = normalizedIds.Except(users.Select(u => u.Id)).ToList();
+        if (missingIds.Count > 0)
+            throw new ApiException(StatusCodes.Status400BadRequest, "بيانات غير صالحة", new { errors = new[] { $"بعض {label} المحددين غير موجودين في النظام" } });
+
+        var usersOutsideDepartment = users.Where(u => u.DepartmentId != departmentId).Select(u => u.Id).ToList();
+        if (usersOutsideDepartment.Count > 0)
+            throw new ApiException(StatusCodes.Status400BadRequest, "بيانات غير صالحة", new { errors = new[] { $"لا يمكن اختيار {label} من إدارة مختلفة" } });
+
+        return normalizedIds;
+    }
+
+    private static IEnumerable<int> GetParticipantIds(Item item) => item.Members.Select(m => m.UserId).Concat(item.Assignees.Select(a => a.UserId)).Append(item.CreatedById).Where(id => id > 0).Distinct();
+
+    private async Task<string> GetUserNameAsync(int userId, CancellationToken cancellationToken)
+        => await _context.Users.Where(u => u.Id == userId).Select(u => u.Name).FirstOrDefaultAsync(cancellationToken) ?? $"مستخدم {userId}";
+
+    private async Task CreateNotificationAsync(int userId, string title, string body, CancellationToken cancellationToken)
+    {
+        _context.Notifications.Add(new Notification { UserId = userId, Title = title, Body = body, IsRead = false, CreatedAt = DateTime.UtcNow });
+        await _context.SaveChangesAsync(cancellationToken);
+    }
+
+    private static List<int> NormalizeUserIds(IEnumerable<int>? ids, params int[] requiredIds)
+        => (ids ?? Enumerable.Empty<int>()).Concat(requiredIds).Where(id => id > 0).Distinct().ToList();
+
+    private static ApiException NotFound() => new(StatusCodes.Status404NotFound, "العنصر غير موجود", null);
+}
